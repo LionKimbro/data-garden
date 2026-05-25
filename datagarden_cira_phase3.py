@@ -191,7 +191,7 @@ def build_ui():
     paned.grid(row=0, column=0, sticky="nsew")
     widgets["paned"] = paned
 
-    canvas = tk.Canvas(paned, bg=CANVAS_BG, highlightthickness=0, cursor="arrow")
+    canvas = tk.Canvas(paned, bg=CANVAS_BG, highlightthickness=0, cursor="arrow", takefocus=True)
     widgets["canvas"] = canvas
     paned.add(canvas, weight=3)
 
@@ -308,6 +308,8 @@ def on_canvas_enter(e):
     raw["current"]["inside_canvas"] = True
     g["canvas_hot"] = True
     raw["current"]["last_event_kind"] = "enter"
+    if not focus_is_text_widget():
+        focus_canvas()
     run_app_cycle()
 
 def on_canvas_leave(e):
@@ -321,18 +323,42 @@ def on_canvas_configure(e):
     refresh_projection()
 
 def on_keydown(e):
+    if e.keysym == "Escape":
+        raw_set_key(e.keysym, True)
+        raw["current"]["last_event_kind"] = "key_press"
+        raw["current"]["last_key"] = e.keysym
+        run_app_cycle()
+        focus_canvas()
+        return "break"
+    if should_capture_chord(e.keysym):
+        raw_set_key(e.keysym, True)
+        raw["current"]["last_event_kind"] = "key_press"
+        raw["current"]["last_key"] = e.keysym
+        run_app_cycle()
+        return "break"
+    if focus_is_text_widget():
+        return None
     raw_set_key(e.keysym, True)
     raw["current"]["last_event_kind"] = "key_press"
     raw["current"]["last_key"] = e.keysym
     run_app_cycle()
 
 def on_keyup(e):
+    if is_chord_key(e.keysym) and should_capture_chord(e.keysym):
+        raw_set_key(e.keysym, False)
+        raw["current"]["last_event_kind"] = "key_release"
+        raw["current"]["last_key"] = e.keysym
+        run_app_cycle()
+        return "break"
+    if focus_is_text_widget():
+        return None
     raw_set_key(e.keysym, False)
     raw["current"]["last_event_kind"] = "key_release"
     raw["current"]["last_key"] = e.keysym
     run_app_cycle()
 
 def on_left_press(e):
+    focus_canvas()
     raw_update_pointer(e)
     raw_set_button(1, True)
     raw["current"]["last_event_kind"] = "button_press"
@@ -350,6 +376,7 @@ def on_left_release(e):
     run_app_cycle()
 
 def on_right_press(e):
+    focus_canvas()
     raw_update_pointer(e)
     raw_set_button(3, True)
     raw["current"]["last_event_kind"] = "button_press"
@@ -367,6 +394,7 @@ def on_right_release(e):
     run_app_cycle()
 
 def on_middle_press(e):
+    focus_canvas()
     raw_update_pointer(e)
     raw_set_button(2, True)
     raw["current"]["last_event_kind"] = "button_press"
@@ -404,6 +432,37 @@ def raw_set_key(keysym, is_down):
         raw["current"]["keys_down"].add(keysym)
     else:
         raw["current"]["keys_down"].discard(keysym)
+
+def focus_canvas():
+    if "canvas" in widgets:
+        widgets["canvas"].focus_set()
+
+def focus_is_text_widget():
+    root = widgets.get("root")
+    if not root:
+        return False
+    focus = root.focus_get()
+    if not focus:
+        return False
+    return focus.winfo_class() in ("Entry", "TEntry", "Text", "Spinbox", "TSpinbox")
+
+def is_chord_key(keysym):
+    if not keysym:
+        return False
+    key = keysym.lower()
+    if key == "space":
+        key = " "
+    return key in CHORD_BITS
+
+def should_capture_chord(keysym=None):
+    if keysym and not is_chord_key(keysym):
+        return False
+    if focus_is_text_widget():
+        return False
+    root = widgets.get("root")
+    if not root:
+        return False
+    return root.focus_get() == widgets.get("canvas")
 
 def run_app_cycle():
     run_continuity_cycle()
