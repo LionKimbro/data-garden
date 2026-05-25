@@ -1,0 +1,13 @@
+{
+  "zookeep-project-guid": "2b690f2e-70b8-42f7-b8c3-cf610c9e5f3a",
+  "name": "data-garden",
+  "repo-type": "python-2026-03",
+  "license": "CC0-1.0",
+  "repository": {
+    "name": "data-garden",
+    "visibility": "public"
+  },
+  "python-package": {
+    "name": "data_garden"
+  }
+}
