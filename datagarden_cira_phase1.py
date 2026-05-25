@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Data Garden - CIRA Phase 1
+# Data Garden - CIRA Phase 2
 
 import json
 import math
@@ -14,7 +14,7 @@ from tkinter import ttk, filedialog, colorchooser, messagebox
 # CONSTANTS / SYMBOLS
 # -----------------------
 
-APP_TITLE = "Data Garden - CIRA Phase 1"
+APP_TITLE = "Data Garden - CIRA Phase 2"
 CANVAS_BG = "#111215"
 GRID_COLOR = "#22252a"
 SELECTION_OUTLINE = "#ffd166"
@@ -33,6 +33,8 @@ COMMAND_NAMES = {
     "XO": "Clone Object",
     "OL": "Open Link",
     "AA": "Abandon Active",
+    "UU": "Undo",
+    "RR": "Redo",
 }
 
 # -----------------------
@@ -42,6 +44,7 @@ COMMAND_NAMES = {
 g = {
     "filepath": None,
     "canvas_hot": False,
+    "restoring_history": False,
 }
 
 widgets = {}
@@ -61,7 +64,13 @@ continuity = {
     "drag_node_id": None,
     "drag_anchor_world": None,
     "drag_start_node": None,
+    "drag_start_checkpoint": None,
+    "drag_changed": False,
     "pan_last": None,
+    "camera_start_checkpoint": None,
+    "camera_changed": False,
+    "camera_timer_id": None,
+    "camera_window_ms": 350,
 }
 
 workspace = {
@@ -96,6 +105,7 @@ immediates = []
 history = {
     "undo": [],
     "redo": [],
+    "limit": 100,
 }
 
 # -----------------------
@@ -230,6 +240,8 @@ def bind_events():
     root.bind("<Control-n>", lambda e: file_new())
     root.bind("<Control-o>", lambda e: file_open())
     root.bind("<Control-s>", lambda e: file_save())
+    root.bind("<Control-z>", lambda e: undo_history())
+    root.bind("<Control-y>", lambda e: redo_history())
     root.bind("<Control-q>", lambda e: root.destroy())
 
 # -----------------------
@@ -311,7 +323,8 @@ def on_left_press(e):
             "id": nid,
         })
         pump_events()
-        refresh_projection()
+        if "canvas" in widgets:
+            refresh_projection()
         return
 
     if workspace["mode"] == "create_rect":
@@ -363,6 +376,7 @@ def on_right_release(e):
 
 def on_middle_press(e):
     continuity["pan_last"] = (e.x, e.y)
+    begin_camera_episode()
     widgets["canvas"].config(cursor="fleur")
 
 def on_middle_drag(e):
@@ -379,10 +393,12 @@ def on_middle_drag(e):
         "oy": cam["oy"] + dy,
     })
     continuity["pan_last"] = (e.x, e.y)
+    continuity["camera_changed"] = True
     pump_events()
     refresh_projection()
 
 def on_middle_release(e):
+    schedule_camera_commit()
     continuity["pan_last"] = None
     widgets["canvas"].config(cursor="arrow")
 
@@ -402,15 +418,57 @@ def on_wheel(e, delta=None):
     ox = mx - wx * new_scale
     oy = my - wy * new_scale
 
+    begin_camera_episode()
     emit_event({"type": "SET_CAMERA", "scale": new_scale, "ox": ox, "oy": oy})
+    continuity["camera_changed"] = True
+    schedule_camera_commit()
     pump_events()
     refresh_projection()
+
+def begin_camera_episode():
+    if continuity["camera_start_checkpoint"]:
+        return
+    continuity["camera_start_checkpoint"] = snapshot_state()
+    continuity["camera_changed"] = False
+
+def schedule_camera_commit():
+    root = widgets.get("root")
+    if not root:
+        return
+    if continuity["camera_timer_id"]:
+        root.after_cancel(continuity["camera_timer_id"])
+    continuity["camera_timer_id"] = root.after(
+        continuity["camera_window_ms"],
+        on_camera_timer,
+    )
+
+def on_camera_timer():
+    continuity["camera_timer_id"] = None
+    commit_camera_episode()
+
+def commit_camera_episode():
+    root = widgets.get("root")
+    if root and continuity["camera_timer_id"]:
+        root.after_cancel(continuity["camera_timer_id"])
+    continuity["camera_timer_id"] = None
+    if continuity["camera_changed"] and continuity["camera_start_checkpoint"]:
+        emit_event({
+            "type": "COMMIT_CAMERA",
+            "checkpoint": continuity["camera_start_checkpoint"],
+        })
+        pump_events()
+        if "canvas" in widgets:
+            refresh_projection()
+    continuity["camera_start_checkpoint"] = None
+    continuity["camera_changed"] = False
 
 def start_drag(kind, nid, wx, wy):
     continuity["drag_kind"] = kind
     continuity["drag_node_id"] = nid
     continuity["drag_anchor_world"] = (wx, wy)
     continuity["drag_start_node"] = copy_node(find_node(nid))
+    continuity["drag_start_checkpoint"] = snapshot_state()
+    continuity["drag_changed"] = False
 
 def drag_update(sx, sy):
     if not continuity["drag_kind"]:
@@ -427,23 +485,32 @@ def drag_update(sx, sy):
         ax, ay = continuity["drag_anchor_world"]
         dx = wx - ax
         dy = wy - ay
-        # TODO Phase 2: collapse drag frames into one undoable MOVE_NODE on release.
-        emit_event({"type": "MOVE_NODE", "id": nid, "x": node["x"] + dx, "y": node["y"] + dy})
+        emit_event({"type": "PREVIEW_NODE", "id": nid, "fields": {"x": node["x"] + dx, "y": node["y"] + dy}})
         continuity["drag_anchor_world"] = (wx, wy)
+        continuity["drag_changed"] = True
 
     if continuity["drag_kind"] == "rotate":
         angle = math.degrees(math.atan2(wy - node["y"], wx - node["x"]))
-        # TODO Phase 2: collapse drag frames into one undoable ROTATE_NODE on release.
-        emit_event({"type": "ROTATE_NODE", "id": nid, "angle": angle})
+        emit_event({"type": "PREVIEW_NODE", "id": nid, "fields": {"angle": angle}})
+        continuity["drag_changed"] = True
 
     pump_events()
     refresh_projection()
 
 def stop_drag():
+    if continuity["drag_kind"] and continuity["drag_changed"]:
+        emit_event({
+            "type": "COMMIT_DRAG",
+            "checkpoint": continuity["drag_start_checkpoint"],
+        })
+        pump_events()
+        refresh_projection()
     continuity["drag_kind"] = None
     continuity["drag_node_id"] = None
     continuity["drag_anchor_world"] = None
     continuity["drag_start_node"] = None
+    continuity["drag_start_checkpoint"] = None
+    continuity["drag_changed"] = False
 
 # -----------------------
 # CONTINUITY: PICKING / COORDINATES
@@ -517,6 +584,14 @@ def reduce_event(event):
         effects.append({"type": "INSPECTOR_REFRESH"})
         return
 
+    if kind == "UNDO":
+        effects.append({"type": "HISTORY_UNDO"})
+        return
+
+    if kind == "REDO":
+        effects.append({"type": "HISTORY_REDO"})
+        return
+
     if kind == "CREATE_NODE":
         workspace["mode"] = None
         effects.append({
@@ -543,6 +618,23 @@ def reduce_event(event):
         effects.append({"type": "WORLD_UPDATE_NODE", "id": event["id"], "fields": event["fields"]})
         return
 
+    if kind == "PREVIEW_NODE":
+        effects.append({
+            "type": "WORLD_UPDATE_NODE",
+            "id": event["id"],
+            "fields": event["fields"],
+            "checkpoint": False,
+        })
+        return
+
+    if kind == "COMMIT_DRAG":
+        effects.append({"type": "HISTORY_REMEMBER", "checkpoint": event["checkpoint"], "label": "Drag"})
+        return
+
+    if kind == "COMMIT_CAMERA":
+        effects.append({"type": "HISTORY_REMEMBER", "checkpoint": event["checkpoint"], "label": "Camera"})
+        return
+
     if kind == "MOVE_NODE":
         effects.append({"type": "WORLD_UPDATE_NODE", "id": event["id"], "fields": {"x": event["x"], "y": event["y"]}})
         return
@@ -562,6 +654,7 @@ def reduce_event(event):
         return
 
     if kind == "NEW_PROJECT":
+        effects.append({"type": "HISTORY_REMEMBER", "checkpoint": snapshot_state(), "label": "New"})
         workspace["selected"] = None
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
@@ -572,6 +665,7 @@ def reduce_event(event):
         return
 
     if kind == "LOAD_PROJECT":
+        effects.append({"type": "HISTORY_REMEMBER", "checkpoint": snapshot_state(), "label": "Load"})
         workspace["selected"] = None
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
@@ -608,6 +702,12 @@ def reduce_command(code):
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
         effects.append({"type": "INSPECTOR_REFRESH"})
+        return
+    if code == "UU":
+        effects.append({"type": "HISTORY_UNDO"})
+        return
+    if code == "RR":
+        effects.append({"type": "HISTORY_REDO"})
         return
 
     reduce_object_command(code, workspace["selected"])
@@ -671,18 +771,21 @@ def route_effect(effect):
         return
 
     if kind == "WORLD_CREATE_NODE":
+        remember_current("Create")
         node = create_node(effect["kind"], effect["x"], effect["y"])
         emit_event({"type": "SET_SELECTION", "id": node["id"]})
         effects.append({"type": "STATUS", "text": "Created " + node["kind"] + " " + node["id"]})
         return
 
     if kind == "WORLD_DELETE_NODE":
+        remember_current("Delete")
         delete_node(effect["id"])
         emit_event({"type": "SET_SELECTION", "id": None})
         effects.append({"type": "STATUS", "text": "Object deleted"})
         return
 
     if kind == "WORLD_CLONE_NODE":
+        remember_current("Clone")
         node = clone_node(effect["id"])
         if node:
             emit_event({"type": "SET_SELECTION", "id": node["id"]})
@@ -690,6 +793,8 @@ def route_effect(effect):
         return
 
     if kind == "WORLD_UPDATE_NODE":
+        if effect.get("checkpoint", True):
+            remember_current("Update")
         update_node(effect["id"], effect["fields"])
         effects.append({"type": "INSPECTOR_REFRESH"})
         return
@@ -701,6 +806,18 @@ def route_effect(effect):
 
     if kind == "WORLD_LOAD":
         load_world(effect["data"])
+        return
+
+    if kind == "HISTORY_REMEMBER":
+        remember_snapshot(effect["checkpoint"], effect["label"])
+        return
+
+    if kind == "HISTORY_UNDO":
+        restore_undo()
+        return
+
+    if kind == "HISTORY_REDO":
+        restore_redo()
         return
 
     if kind == "ASK_COLOR":
@@ -966,6 +1083,8 @@ def rect_points(node):
 # -----------------------
 
 def refresh_inspector():
+    if "var_id" not in widgets:
+        return
     nid = workspace["selected"]
     if not nid:
         widgets["var_id"].set("")
@@ -1044,6 +1163,8 @@ def clone_selected():
     refresh_projection()
 
 def status_set(text):
+    if "status" not in widgets:
+        return
     widgets["status"].config(text=text)
 
 # -----------------------
@@ -1183,8 +1304,114 @@ def atomic_write_json(path, data):
         raise err
 
 # -----------------------
-# HISTORY PLACEHOLDER
+# HISTORY MANAGER
 # -----------------------
+
+def undo_history():
+    emit_event({"type": "UNDO"})
+    pump_events()
+    refresh_projection()
+
+def redo_history():
+    emit_event({"type": "REDO"})
+    pump_events()
+    refresh_projection()
+
+def remember_current(label):
+    remember_snapshot(snapshot_state(), label)
+
+def remember_snapshot(snapshot, label):
+    if g["restoring_history"]:
+        return
+    snapshot["label"] = label
+    history["undo"].append(snapshot)
+    history["redo"].clear()
+    trim_history()
+
+def trim_history():
+    limit = history["limit"]
+    while len(history["undo"]) > limit:
+        history["undo"].pop(0)
+
+def restore_undo():
+    if not history["undo"]:
+        effects.append({"type": "STATUS", "text": "Nothing to undo"})
+        return
+    snapshot = history["undo"].pop()
+    label = snapshot.get("label", "change")
+    current = snapshot_state()
+    current["label"] = label
+    history["redo"].append(current)
+    restore_snapshot(snapshot)
+    effects.append({"type": "INSPECTOR_REFRESH"})
+    effects.append({"type": "STATUS", "text": "Undid " + label})
+
+def restore_redo():
+    if not history["redo"]:
+        effects.append({"type": "STATUS", "text": "Nothing to redo"})
+        return
+    snapshot = history["redo"].pop()
+    label = snapshot.get("label", "change")
+    current = snapshot_state()
+    current["label"] = label
+    history["undo"].append(current)
+    restore_snapshot(snapshot)
+    effects.append({"type": "INSPECTOR_REFRESH"})
+    effects.append({"type": "STATUS", "text": "Redid " + label})
+
+def snapshot_state():
+    return {
+        "workspace": snapshot_workspace(),
+        "world": snapshot_world(),
+    }
+
+def snapshot_workspace():
+    return {
+        "selected": workspace["selected"],
+        "mode": workspace["mode"],
+        "awaiting_click_for": workspace["awaiting_click_for"],
+        "camera": {
+            "scale": workspace["camera"]["scale"],
+            "ox": workspace["camera"]["ox"],
+            "oy": workspace["camera"]["oy"],
+        },
+    }
+
+def snapshot_world():
+    return {
+        "next_id": world["next_id"],
+        "nodes": [copy_node(node) for node in world["nodes"]],
+    }
+
+def restore_snapshot(snapshot):
+    g["restoring_history"] = True
+    workspace["selected"] = snapshot["workspace"]["selected"]
+    workspace["mode"] = snapshot["workspace"]["mode"]
+    workspace["awaiting_click_for"] = snapshot["workspace"]["awaiting_click_for"]
+    workspace["camera"]["scale"] = snapshot["workspace"]["camera"]["scale"]
+    workspace["camera"]["ox"] = snapshot["workspace"]["camera"]["ox"]
+    workspace["camera"]["oy"] = snapshot["workspace"]["camera"]["oy"]
+
+    world["next_id"] = snapshot["world"]["next_id"]
+    world["nodes"].clear()
+    for node in snapshot["world"]["nodes"]:
+        world["nodes"].append(copy_node(node))
+
+    reset_continuity_for_time_jump()
+    g["restoring_history"] = False
+
+def reset_continuity_for_time_jump():
+    continuity["pending_letters"].clear()
+    continuity["drag_kind"] = None
+    continuity["drag_node_id"] = None
+    continuity["drag_anchor_world"] = None
+    continuity["drag_start_node"] = None
+    continuity["drag_start_checkpoint"] = None
+    continuity["drag_changed"] = False
+    continuity["pan_last"] = None
+    continuity["camera_start_checkpoint"] = None
+    continuity["camera_changed"] = False
+    continuity["camera_timer_id"] = None
 
 def clear_history():
     history["undo"].clear()
