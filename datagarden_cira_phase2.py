@@ -442,6 +442,16 @@ def schedule_camera_commit():
         on_camera_timer,
     )
 
+def cancel_timer(name):
+    root = widgets.get("root")
+    timer_id = continuity[name]
+    if root and timer_id:
+        try:
+            root.after_cancel(timer_id)
+        except Exception:
+            pass
+    continuity[name] = None
+
 def on_camera_timer():
     continuity["camera_timer_id"] = None
     commit_camera_episode()
@@ -778,6 +788,8 @@ def route_effect(effect):
         return
 
     if kind == "WORLD_DELETE_NODE":
+        if not find_node(effect["id"]):
+            return
         remember_current("Delete")
         delete_node(effect["id"])
         emit_event({"type": "SET_SELECTION", "id": None})
@@ -785,6 +797,8 @@ def route_effect(effect):
         return
 
     if kind == "WORLD_CLONE_NODE":
+        if not find_node(effect["id"]):
+            return
         remember_current("Clone")
         node = clone_node(effect["id"])
         if node:
@@ -793,6 +807,8 @@ def route_effect(effect):
         return
 
     if kind == "WORLD_UPDATE_NODE":
+        if not find_node(effect["id"]):
+            return
         if effect.get("checkpoint", True):
             remember_current("Update")
         update_node(effect["id"], effect["fields"])
@@ -1234,8 +1250,7 @@ def load_world(data):
 
     if "next_id" in data:
         world["next_id"] = int(data["next_id"])
-    else:
-        repair_next_id()
+    repair_next_id()
 
 def load_camera(data):
     camera = data.get("camera", {})
@@ -1385,23 +1400,29 @@ def snapshot_world():
 
 def restore_snapshot(snapshot):
     g["restoring_history"] = True
-    workspace["selected"] = snapshot["workspace"]["selected"]
-    workspace["mode"] = snapshot["workspace"]["mode"]
-    workspace["awaiting_click_for"] = snapshot["workspace"]["awaiting_click_for"]
-    workspace["camera"]["scale"] = snapshot["workspace"]["camera"]["scale"]
-    workspace["camera"]["ox"] = snapshot["workspace"]["camera"]["ox"]
-    workspace["camera"]["oy"] = snapshot["workspace"]["camera"]["oy"]
+    try:
+        workspace["selected"] = snapshot["workspace"]["selected"]
+        workspace["mode"] = snapshot["workspace"]["mode"]
+        workspace["awaiting_click_for"] = snapshot["workspace"]["awaiting_click_for"]
+        workspace["camera"]["scale"] = snapshot["workspace"]["camera"]["scale"]
+        workspace["camera"]["ox"] = snapshot["workspace"]["camera"]["ox"]
+        workspace["camera"]["oy"] = snapshot["workspace"]["camera"]["oy"]
 
-    world["next_id"] = snapshot["world"]["next_id"]
-    world["nodes"].clear()
-    for node in snapshot["world"]["nodes"]:
-        world["nodes"].append(copy_node(node))
+        world["next_id"] = snapshot["world"]["next_id"]
+        world["nodes"].clear()
+        for node in snapshot["world"]["nodes"]:
+            world["nodes"].append(copy_node(node))
 
-    reset_continuity_for_time_jump()
-    g["restoring_history"] = False
+        reset_continuity_for_time_jump()
+    finally:
+        g["restoring_history"] = False
 
 def reset_continuity_for_time_jump():
+    cancel_timer("chord_timer_id")
+    cancel_timer("camera_timer_id")
     continuity["pending_letters"].clear()
+    continuity["chord_active"] = False
+    continuity["chord_keys"].clear()
     continuity["drag_kind"] = None
     continuity["drag_node_id"] = None
     continuity["drag_anchor_world"] = None
@@ -1411,7 +1432,6 @@ def reset_continuity_for_time_jump():
     continuity["pan_last"] = None
     continuity["camera_start_checkpoint"] = None
     continuity["camera_changed"] = False
-    continuity["camera_timer_id"] = None
 
 def clear_history():
     history["undo"].clear()
