@@ -1,0 +1,180 @@
+{
+  "document": {
+    "document-id": "datagarden.description.v1",
+    "title": "Data Garden Description",
+    "filename": "0001__description.json",
+    "status": "draft",
+    "purpose": "Describe the current Data Garden application, its CIRA-shaped boundaries, execution model, data model, and module layout."
+  },
+  "summary": "Data Garden is a Tkinter-based interactive workspace for arranging simple linked note nodes on a zoomable canvas. The current implementation is a CIRA-shaped desktop prototype: raw GUI input is interpreted by continuity tokenizers and organisms, reduced into semantic events, routed through effects, stored in a durable world model, and rendered by projection code.",
+  "execution": {
+    "default": "The default execution path is lionscliapp. After an editable install with pip install -e ., the datagarden executable declares the CLI and dispatches the bare command to the GUI.",
+    "commands": [
+      "datagarden",
+      "python -m data_garden"
+    ],
+    "cli-framework": "lionscliapp",
+    "project-directory": ".datagarden",
+    "built-in-commands": [
+      "set",
+      "get",
+      "keys",
+      "help"
+    ]
+  },
+  "implementation": {
+    "language": "Python",
+    "gui-toolkit": "Tkinter / ttk",
+    "style": "Procedural modules with explicit shared state bundles.",
+    "state-policy": "The application keeps canonical mutable dictionaries in data_garden.state. Modules import and mutate those bundles directly inside the trusted interior.",
+    "source-layout": {
+      "data_garden.app": "lionscliapp declaration and command dispatch.",
+      "data_garden.constants": "Application title, colors, node field names, chord bit assignments, and command labels.",
+      "data_garden.state": "Canonical global bundles for raw input, derived facts, organisms, workspace, world, projection, events, effects, immediates, history, and widgets.",
+      "data_garden.ui": "Root window, menu, canvas, inspector panel construction, and Tk event binding.",
+      "data_garden.continuity.input_and_organisms": "Tk callback handlers, raw updates, tokenizers, Judge coordination, and interaction organisms.",
+      "data_garden.discrete.events": "Semantic event emission and committed selection helpers.",
+      "data_garden.discrete.reducer": "Semantic event reducer, command reducer, and effect routing.",
+      "data_garden.world.model": "Node creation, cloning, deletion, updates, world revision deltas, geometry helpers, and revision navigation.",
+      "data_garden.projection.camera": "Screen/world coordinate conversion and hit picking.",
+      "data_garden.projection.render": "Projection refresh, grid drawing, node drawing, selection drawing, marquee preview, and visual previews.",
+      "data_garden.inspector": "Inspector refresh, field application, color/link/delete/clone commands, and status updates.",
+      "data_garden.file_ops": "New/open/save operations, JSON normalization, project dump/load, and atomic JSON writes.",
+      "data_garden.history": "Undo/redo snapshots, restoration, and continuity reset after time jumps.",
+      "data_garden.runtime": "Runtime cycle pumping and GUI main loop.",
+      "data_garden.wiring": "First-pass procedural namespace wiring after the monolith split."
+    }
+  },
+  "cira-boundaries": {
+    "continuity-engine": {
+      "owns": [
+        "raw input snapshots",
+        "derived perceptual facts",
+        "tokenizer drag anchors",
+        "organism finite-state state",
+        "Judge resource ownership",
+        "single-frame immediates"
+      ],
+      "main-module": "data_garden.continuity.input_and_organisms"
+    },
+    "discrete-engine": {
+      "owns": [
+        "workspace selection",
+        "mode",
+        "awaiting target command state",
+        "desired camera",
+        "semantic event reduction"
+      ],
+      "main-modules": [
+        "data_garden.discrete.events",
+        "data_garden.discrete.reducer"
+      ]
+    },
+    "world-model": {
+      "owns": [
+        "nodes",
+        "next node id",
+        "world revision graph",
+        "revision deltas"
+      ],
+      "main-module": "data_garden.world.model"
+    },
+    "projection": {
+      "owns": [
+        "canvas item handles",
+        "realized camera copy",
+        "grid, node, selection, and marquee rendering"
+      ],
+      "main-modules": [
+        "data_garden.projection.camera",
+        "data_garden.projection.render"
+      ]
+    },
+    "history-manager": {
+      "owns": [
+        "undo stack",
+        "redo stack",
+        "checkpoint snapshots",
+        "continuity reset after restoration"
+      ],
+      "main-module": "data_garden.history"
+    },
+    "runtime": {
+      "owns": [
+        "application cycle ordering",
+        "semantic event queue draining",
+        "effect routing loop",
+        "Tk main loop startup"
+      ],
+      "main-module": "data_garden.runtime"
+    }
+  },
+  "data-model": {
+    "project-format": "JSON",
+    "project-version": 1,
+    "project-fields": [
+      "version",
+      "nodes",
+      "camera",
+      "next_id"
+    ],
+    "node-kinds": [
+      "rect",
+      "circle"
+    ],
+    "node-fields": [
+      "id",
+      "kind",
+      "x",
+      "y",
+      "w",
+      "h",
+      "angle",
+      "fill",
+      "title",
+      "url",
+      "note"
+    ]
+  },
+  "interaction-model": {
+    "chord-keys": [
+      "a",
+      "s",
+      "d",
+      "f",
+      "space"
+    ],
+    "commands": {
+      "CR": "Create Rectangle",
+      "CC": "Create Circle",
+      "RO": "Rotate Object",
+      "CO": "Color Object",
+      "DO": "Delete Object",
+      "XO": "Clone Object",
+      "OL": "Open Link",
+      "AA": "Abandon Active",
+      "UU": "Undo",
+      "RR": "Redo"
+    },
+    "canvas-behaviors": [
+      "left click selection",
+      "left drag selected nodes",
+      "left drag empty canvas marquee selection",
+      "middle drag camera pan",
+      "mouse wheel camera zoom",
+      "mode-driven create and rotate interactions"
+    ],
+    "inspector-behaviors": [
+      "edit selected node title, url, fill, dimensions, angle, and note",
+      "pick color",
+      "open link",
+      "delete selection",
+      "clone selection"
+    ]
+  },
+  "notes": [
+    "The first modular pass preserves the original procedural function names and shared mutable state rather than introducing classes.",
+    "data_garden.wiring is intentionally transitional: it lets section modules resolve cross-section function calls while retaining the monolith's trusted-interior style.",
+    "Future cleanup can reduce wiring pressure by moving a few cross-layer calls behind explicit small APIs."
+  ]
+}
