@@ -38,6 +38,65 @@ def item_to_node_id(item):
             return tag[2:]
     return None
 
+def frame_points_screen(bounds):
+    x0, y0, x1, y1 = bounds
+    sx0, sy0 = world_to_screen(x0, y0)
+    sx1, sy1 = world_to_screen(x1, y1)
+    return {
+        "nw": (sx0, sy0),
+        "ne": (sx1, sy0),
+        "se": (sx1, sy1),
+        "sw": (sx0, sy1),
+        "n": ((sx0 + sx1) / 2, sy0),
+    }
+
+def handle_specs_for_selection():
+    if workspace["mode"] not in ("rotate_object", "size_object"):
+        return []
+    bounds = selected_bounds_world()
+    if not bounds:
+        return []
+    points = frame_points_screen(bounds)
+    if workspace["mode"] == "rotate_object":
+        x, y = points["n"]
+        return [{
+            "kind": "handle",
+            "handle_kind": "rotate",
+            "handle_name": "rotate",
+            "mode": workspace["mode"],
+            "shape": "circle",
+            "sx": x,
+            "sy": y - 28,
+            "radius": 6,
+        }]
+    specs = []
+    for name in ("nw", "ne", "sw", "se"):
+        x, y = points[name]
+        specs.append({
+            "kind": "handle",
+            "handle_kind": "size",
+            "handle_name": name,
+            "mode": workspace["mode"],
+            "shape": "square",
+            "sx": x,
+            "sy": y,
+            "radius": 5,
+        })
+    return specs
+
+def handle_hit_test(sx, sy):
+    for spec in reversed(handle_specs_for_selection()):
+        radius = spec["radius"] + 3
+        if abs(sx - spec["sx"]) <= radius and abs(sy - spec["sy"]) <= radius:
+            return {
+                "kind": "handle",
+                "node_id": None,
+                "handle_kind": spec["handle_kind"],
+                "handle_name": spec["handle_name"],
+                "mode": spec["mode"],
+            }
+    return None
+
 def value_to_letter(value):
     if 1 <= value <= 26:
         return chr(ord("A") + value - 1)

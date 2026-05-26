@@ -8,6 +8,10 @@ GRID_COLOR = "#22252a"
 SELECTION_OUTLINE = "#ffd166"
 MARQUEE_OUTLINE = "#7dd3fc"
 MARQUEE_CANDIDATE_OUTLINE = "#38bdf8"
+MANIPULATION_FRAME_OUTLINE = "#fbbf24"
+ROTATE_HANDLE_FILL = "#fde68a"
+SIZE_HANDLE_FILL = "#bfdbfe"
+HANDLE_OUTLINE = "#111215"
 
 NODE_KEYS = ("id", "kind", "x", "y", "w", "h", "angle", "fill", "title", "url", "note")
 
@@ -17,6 +21,7 @@ COMMAND_NAMES = {
     "CR": "Create Rectangle",
     "CC": "Create Circle",
     "RO": "Rotate Object",
+    "SO": "Size Object",
     "CO": "Color Object",
     "DO": "Delete Object",
     "XO": "Clone Object",

@@ -148,6 +148,7 @@
       "CR": "Create Rectangle",
       "CC": "Create Circle",
       "RO": "Rotate Object",
+      "SO": "Size Object",
       "CO": "Color Object",
       "DO": "Delete Object",
       "XO": "Clone Object",

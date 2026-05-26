@@ -220,6 +220,8 @@ def judge_resource_matches_context(resource):
         return workspace["mode"] in ("create_rect", "create_circle") and workspace["awaiting_click_for"] is None
     if resource == "mode:rotate_object":
         return workspace["mode"] == "rotate_object" and workspace["awaiting_click_for"] is None
+    if resource == "mode:size_object":
+        return workspace["mode"] == "size_object" and workspace["awaiting_click_for"] is None
     if resource == "mode:awaiting_target":
         return bool(workspace["awaiting_click_for"])
     if resource == "selection:primary":
@@ -349,13 +351,24 @@ def tokenize_keyboard():
     }
 
 def tokenize_target():
+    target = {
+        "kind": "empty",
+        "node_id": None,
+        "handle_kind": None,
+        "handle_name": None,
+        "mode": workspace["mode"],
+    }
     nid = None
     if raw["current"]["inside_canvas"] and "canvas" in widgets:
-        nid = pick_node(raw["current"]["sx"], raw["current"]["sy"])
-    derived["target"] = {
-        "node_id": nid,
-        "kind": "node" if nid else None,
-    }
+        handle = handle_hit_test(raw["current"]["sx"], raw["current"]["sy"])
+        if handle:
+            target.update(handle)
+        else:
+            nid = pick_node(raw["current"]["sx"], raw["current"]["sy"])
+            if nid:
+                target["kind"] = "node"
+                target["node_id"] = nid
+    derived["target"] = target
 
 def tokenize_drag():
     buttons = derived["buttons"]
@@ -389,6 +402,7 @@ def run_organisms():
     run_camera_pan_organism()
     run_camera_zoom_organism()
     run_rotate_object_organism()
+    run_handle_target_organism()
     run_drag_selection_organism()
     run_marquee_select_organism()
     run_click_selection_organism()
@@ -595,6 +609,8 @@ def start_rotate_organism():
         return
     if not derived["buttons"]["b1_pressed"]:
         return
+    if derived["target"]["kind"] == "handle":
+        return
     if not judge_commit("rotate_object", ["mode:rotate_object", "selection:primary", "pointer:left", "selection", "node:" + selected]):
         return
     rotate = organisms["rotate"]
@@ -644,6 +660,18 @@ def stop_rotate_organism():
 
 def current_rotate_angle(node):
     return math.degrees(math.atan2(derived["pointer"]["wy"] - node["y"], derived["pointer"]["wx"] - node["x"]))
+
+def run_handle_target_organism():
+    target = derived["target"]
+    if target["kind"] != "handle":
+        return
+    if not derived["buttons"]["b1_pressed"]:
+        return
+    resource = "handle:" + target["handle_kind"]
+    if not judge_commit("handle_target", ["mode:" + target["mode"], resource, "pointer:left"]):
+        return
+    status_set("Handle target: " + target["handle_name"])
+    judge_release("handle_target")
 
 def run_marquee_select_organism():
     marquee = organisms["marquee_select"]

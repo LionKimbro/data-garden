@@ -1,0 +1,115 @@
+{
+  "document": {
+    "document-id": "datagarden.manipulation-frames-and-handle-targets.v1",
+    "title": "Manipulation Frames and Handle Targets",
+    "filename": "0002__manipulation-frames-and-handle-targets.json",
+    "status": "implemented-note",
+    "purpose": "Record where manipulation frames and handle hit-target detection live after adding rotate and size mode handles."
+  },
+  "summary": "Rotate Object(s) mode and Size Object(s) mode now display manipulation frames for the current selection. Rotate mode shows one handle above the frame. Size mode shows four corner handles. Handles are visible and tokenized as targets, but this change does not add resize transformations, group rotation math, group scaling math, the old move-object command, secondary-button drag, full-world snapshots, or new world revisions for showing handles."
+  ,
+  "commands": {
+    "RO": {
+      "meaning": "Rotate Object(s)",
+      "workspace-mode": "rotate_object",
+      "current-transform-status": "Existing single-node node-drag rotate behavior is preserved; handle-driven rotation is not implemented."
+    },
+    "SO": {
+      "meaning": "Size Object(s)",
+      "workspace-mode": "size_object",
+      "current-transform-status": "Handle-driven resizing is not implemented."
+    }
+  },
+  "frame-computation": {
+    "module": "data_garden.world.model",
+    "helpers": [
+      "node_bounds_world(node)",
+      "selected_bounds_world()"
+    ],
+    "policy": [
+      "Exactly one selected node uses that node's world bounds.",
+      "Multiple selected nodes use the axis-aligned union of selected node world bounds.",
+      "Rotated rectangles use transformed corner bounds from rect_points_world(node).",
+      "Circles and ellipses use x/y/w/h bounds.",
+      "Unknown node kinds return no bounds and are ignored by selected_bounds_world()."
+    ]
+  },
+  "handle-projection": {
+    "module": "data_garden.projection.camera",
+    "helpers": [
+      "frame_points_screen(bounds)",
+      "handle_specs_for_selection()"
+    ],
+    "policy": [
+      "Handles are projected in screen space from the selected world bounds.",
+      "rotate_object creates one circular rotate handle above the top-center of the frame.",
+      "size_object creates square corner handles named nw, ne, sw, and se."
+    ]
+  },
+  "projection-drawing": {
+    "module": "data_garden.projection.render",
+    "helpers": [
+      "draw_manipulation_frame()",
+      "draw_rotate_handle(points)",
+      "draw_size_handles()"
+    ],
+    "policy": [
+      "Projection draws frames only when the selection is non-empty and workspace mode is rotate_object or size_object.",
+      "Projection draws canvas items tagged manipulation.",
+      "Projection reads workspace and world state but does not mutate semantic state or world state."
+    ]
+  },
+  "handle-hit-testing": {
+    "module": "data_garden.projection.camera",
+    "helper": "handle_hit_test(sx, sy)",
+    "tokenizer": "data_garden.continuity.input_and_organisms.tokenize_target()",
+    "policy": [
+      "Handle hit-testing happens during target tokenization.",
+      "Handle hit-testing uses screen-space hit rectangles around projected handle specs.",
+      "Handles are checked before node picking so handle targets win over underlying nodes."
+    ]
+  },
+  "derived-target-shape": {
+    "empty": {
+      "kind": "empty",
+      "node_id": null,
+      "handle_kind": null,
+      "handle_name": null,
+      "mode": "current workspace mode"
+    },
+    "node": {
+      "kind": "node",
+      "node_id": "selected node id under the pointer",
+      "handle_kind": null,
+      "handle_name": null,
+      "mode": "current workspace mode"
+    },
+    "handle": {
+      "kind": "handle",
+      "node_id": null,
+      "handle_kind": "rotate or size",
+      "handle_name": "rotate, nw, ne, sw, or se",
+      "mode": "rotate_object or size_object"
+    }
+  },
+  "judge-resources": {
+    "reserved-or-used": [
+      "mode:rotate_object",
+      "mode:size_object",
+      "handle:rotate",
+      "handle:size"
+    ],
+    "notes": [
+      "mode:size_object was added as a context resource.",
+      "handle:rotate and handle:size are used by the placeholder handle target organism for resource coordination.",
+      "No world mutation resources are claimed by handle detection."
+    ]
+  },
+  "remaining-work": [
+    "Add rotate-handle organism behavior for committed single-selection rotation.",
+    "Design and add group rotation math before enabling group rotate transformations.",
+    "Add size-handle organism behavior for committed single-selection resize.",
+    "Design and add group scaling math before enabling group resize transformations.",
+    "Route future transformations through semantic events, effects, and reversible world deltas."
+  ]
+}

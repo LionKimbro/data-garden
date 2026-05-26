@@ -20,6 +20,7 @@ def refresh_projection():
     draw_grid()
     draw_nodes()
     draw_selection()
+    draw_manipulation_frame()
     draw_marquee()
 
 def apply_cursor_immediates():
@@ -113,6 +114,70 @@ def draw_selection():
     canvas.delete("sel")
     for nid in selection_ids():
         draw_node_selection(nid)
+
+def draw_manipulation_frame():
+    canvas = widgets["canvas"]
+    canvas.delete("manipulation")
+    if workspace["mode"] not in ("rotate_object", "size_object"):
+        return
+    bounds = selected_bounds_world()
+    if not bounds:
+        return
+    points = frame_points_screen(bounds)
+    canvas.create_rectangle(
+        points["nw"][0],
+        points["nw"][1],
+        points["se"][0],
+        points["se"][1],
+        outline=MANIPULATION_FRAME_OUTLINE,
+        width=1,
+        dash=(5, 3),
+        tags=("manipulation",),
+    )
+    if workspace["mode"] == "rotate_object":
+        draw_rotate_handle(points)
+    if workspace["mode"] == "size_object":
+        draw_size_handles()
+
+def draw_rotate_handle(points):
+    canvas = widgets["canvas"]
+    top_x, top_y = points["n"]
+    for spec in handle_specs_for_selection():
+        canvas.create_line(
+            top_x,
+            top_y,
+            spec["sx"],
+            spec["sy"],
+            fill=MANIPULATION_FRAME_OUTLINE,
+            width=1,
+            tags=("manipulation",),
+        )
+        r = spec["radius"]
+        canvas.create_oval(
+            spec["sx"] - r,
+            spec["sy"] - r,
+            spec["sx"] + r,
+            spec["sy"] + r,
+            fill=ROTATE_HANDLE_FILL,
+            outline=HANDLE_OUTLINE,
+            width=1,
+            tags=("manipulation",),
+        )
+
+def draw_size_handles():
+    canvas = widgets["canvas"]
+    for spec in handle_specs_for_selection():
+        r = spec["radius"]
+        canvas.create_rectangle(
+            spec["sx"] - r,
+            spec["sy"] - r,
+            spec["sx"] + r,
+            spec["sy"] + r,
+            fill=SIZE_HANDLE_FILL,
+            outline=HANDLE_OUTLINE,
+            width=1,
+            tags=("manipulation",),
+        )
 
 def draw_marquee():
     canvas = widgets["canvas"]

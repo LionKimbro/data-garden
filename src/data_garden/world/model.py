@@ -302,6 +302,23 @@ def selection_candidates_in_world_rect(x0, y0, x1, y1):
             ids.append(node["id"])
     return ids
 
+def selected_bounds_world():
+    bounds = []
+    for nid in selection_ids():
+        node = find_node(nid)
+        if node:
+            node_bounds = node_bounds_world(node)
+            if node_bounds:
+                bounds.append(node_bounds)
+    if not bounds:
+        return None
+    return (
+        min(item[0] for item in bounds),
+        min(item[1] for item in bounds),
+        max(item[2] for item in bounds),
+        max(item[3] for item in bounds),
+    )
+
 def copy_node(node):
     copied = {}
     for key in NODE_KEYS:

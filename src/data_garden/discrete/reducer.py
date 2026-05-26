@@ -164,6 +164,9 @@ def reduce_command(code):
     if code == "RO":
         workspace["mode"] = "rotate_object"
         return
+    if code == "SO":
+        workspace["mode"] = "size_object"
+        return
     if code == "AA":
         selection_clear()
         workspace["mode"] = None
