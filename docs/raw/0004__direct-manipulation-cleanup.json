@@ -72,6 +72,17 @@
     ],
     "behavior": "The shortcut calls apply_inspector() from inspector entry and note widgets and returns break so note fields do not insert a newline."
   },
+  "inspector-layout": {
+    "button-row": "Inspector action buttons are consolidated into one compact horizontal row.",
+    "buttons": [
+      "Apply",
+      "Color",
+      "Open",
+      "Clone",
+      "Delete"
+    ],
+    "behavior": "The row uses the same existing callbacks and does not change command, semantic, world, or history behavior."
+  },
   "known-limitations": [
     "Size handles still use center-based uniform scaling.",
     "No side handles or non-uniform scaling yet.",

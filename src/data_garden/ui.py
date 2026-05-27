@@ -80,19 +80,11 @@ def build_inspector():
         widgets["inspector_apply_widgets"].append(entry)
         return entry
 
-    def btn(text, fn):
-        i = row["i"]
-        row["i"] += 1
-        button = ttk.Button(right, text=text, command=fn)
-        button.grid(row=i, column=0, columnspan=2, sticky="ew", padx=8, pady=6)
-        return button
-
     lab("Selected ID"); ent(widgets["var_id"])
     lab("Kind"); ent(widgets["var_kind"])
     lab("Title"); ent(widgets["var_title"])
     lab("URL"); ent(widgets["var_url"])
     lab("Fill"); ent(widgets["var_fill"])
-    btn("Pick Color", pick_color)
     lab("Width"); ent(widgets["var_w"])
     lab("Height"); ent(widgets["var_h"])
     lab("Angle (deg)"); ent(widgets["var_angle"])
@@ -106,11 +98,31 @@ def build_inspector():
     widgets["inspector_apply_widgets"].append(text)
     right.rowconfigure(i, weight=1)
 
-    btn("Apply Changes", apply_inspector)
-    btn("Open Link", open_link)
-    btn("Delete", delete_selected)
-    btn("Clone", clone_selected)
+    build_inspector_button_row(row)
     bind_inspector_apply_shortcuts()
+
+def build_inspector_button_row(row):
+    right = widgets["right"]
+    i = row["i"]
+    row["i"] += 1
+    button_row = ttk.Frame(right)
+    button_row.grid(row=i, column=0, columnspan=2, sticky="ew", padx=8, pady=6)
+    widgets["inspector_button_row"] = button_row
+
+    buttons = [
+        ("btn_apply", "Apply", apply_inspector),
+        ("btn_color", "Color", pick_color),
+        ("btn_open", "Open", open_link),
+        ("btn_clone", "Clone", clone_selected),
+        ("btn_delete", "Delete", delete_selected),
+    ]
+    for col in range(len(buttons)):
+        button_row.columnconfigure(col, weight=1)
+    for col, spec in enumerate(buttons):
+        key, text, fn = spec
+        button = ttk.Button(button_row, text=text, command=fn)
+        button.grid(row=0, column=col, sticky="ew", padx=(0 if col == 0 else 3, 0 if col == len(buttons) - 1 else 3))
+        widgets[key] = button
 
 def bind_inspector_apply_shortcuts():
     for widget in widgets["inspector_apply_widgets"]:
