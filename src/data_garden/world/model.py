@@ -128,6 +128,15 @@ def build_update_map_delta(updates):
             redo_delta.append({"op": "update_node", "id": nid, "fields": copy_fields(updates[nid], keys)})
     return undo_delta, redo_delta
 
+def update_map_changed(updates):
+    for nid in updates:
+        node = find_node(nid)
+        if node:
+            for key in updates[nid]:
+                if node[key] != updates[nid][key]:
+                    return True
+    return False
+
 def dump_world_packet():
     return {
         "nodes": [copy_node(node) for node in world["nodes"]],
@@ -318,6 +327,51 @@ def selected_bounds_world():
         max(item[2] for item in bounds),
         max(item[3] for item in bounds),
     )
+
+def center_of_bounds(bounds):
+    return ((bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2)
+
+def distance(a, b):
+    dx = a[0] - b[0]
+    dy = a[1] - b[1]
+    return math.sqrt(dx * dx + dy * dy)
+
+def angle_from(pivot, point):
+    return math.degrees(math.atan2(point[1] - pivot[1], point[0] - pivot[0]))
+
+def rotate_point(point, pivot, degrees):
+    radians = math.radians(degrees)
+    cs = math.cos(radians)
+    sn = math.sin(radians)
+    dx = point[0] - pivot[0]
+    dy = point[1] - pivot[1]
+    return (pivot[0] + dx * cs - dy * sn, pivot[1] + dx * sn + dy * cs)
+
+def transform_nodes_for_rotation(originals, ids, pivot, delta):
+    updates = {}
+    for nid in ids:
+        original = originals.get(nid)
+        if original:
+            x, y = rotate_point((original["x"], original["y"]), pivot, delta)
+            updates[nid] = {
+                "x": x,
+                "y": y,
+                "angle": original["angle"] + delta,
+            }
+    return updates
+
+def transform_nodes_for_scale(originals, ids, pivot, scale):
+    updates = {}
+    for nid in ids:
+        original = originals.get(nid)
+        if original:
+            updates[nid] = {
+                "x": pivot[0] + (original["x"] - pivot[0]) * scale,
+                "y": pivot[1] + (original["y"] - pivot[1]) * scale,
+                "w": original["w"] * scale,
+                "h": original["h"] * scale,
+            }
+    return updates
 
 def copy_node(node):
     copied = {}

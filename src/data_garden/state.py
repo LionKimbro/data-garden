@@ -67,12 +67,21 @@ organisms = {
         "start_checkpoint": None,
         "changed": False,
     },
-    "rotate": {
+    "rotate_selection": {
         "state": "idle",
-        "pointer": None,
-        "node_id": None,
-        "start_checkpoint": None,
+        "ids": [],
+        "pivot": None,
         "start_angle": None,
+        "originals": {},
+        "changed": False,
+    },
+    "size_selection": {
+        "state": "idle",
+        "ids": [],
+        "handle_name": None,
+        "pivot": None,
+        "start_dist": None,
+        "originals": {},
         "changed": False,
     },
     "camera_pan": {

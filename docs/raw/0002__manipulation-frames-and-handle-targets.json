@@ -12,12 +12,12 @@
     "RO": {
       "meaning": "Rotate Object(s)",
       "workspace-mode": "rotate_object",
-      "current-transform-status": "Existing single-node node-drag rotate behavior is preserved; handle-driven rotation is not implemented."
+      "current-transform-status": "Handle-driven rotation is implemented in 0003__manipulation-transforms-rotate-and-size.json."
     },
     "SO": {
       "meaning": "Size Object(s)",
       "workspace-mode": "size_object",
-      "current-transform-status": "Handle-driven resizing is not implemented."
+      "current-transform-status": "Handle-driven center-uniform scaling is implemented in 0003__manipulation-transforms-rotate-and-size.json."
     }
   },
   "frame-computation": {
@@ -106,10 +106,10 @@
     ]
   },
   "remaining-work": [
-    "Add rotate-handle organism behavior for committed single-selection rotation.",
-    "Design and add group rotation math before enabling group rotate transformations.",
-    "Add size-handle organism behavior for committed single-selection resize.",
-    "Design and add group scaling math before enabling group resize transformations.",
-    "Route future transformations through semantic events, effects, and reversible world deltas."
+    "Opposite-corner anchored scaling.",
+    "Optional non-uniform scaling.",
+    "Side handles.",
+    "Snapping and angle constraints.",
+    "Better handle styling and cursor feedback."
   ]
 }

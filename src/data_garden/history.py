@@ -117,7 +117,8 @@ def reset_continuity_for_time_jump():
     judge_clear()
     reset_chord_organism()
     reset_drag_selection_organism()
-    reset_rotate_organism()
+    reset_rotate_selection_organism()
+    reset_size_selection_organism()
     reset_camera_organisms()
     reset_marquee_organism()
 

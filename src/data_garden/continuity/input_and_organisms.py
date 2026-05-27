@@ -271,13 +271,24 @@ def reset_drag_selection_organism():
     organisms["drag_selection"]["start_checkpoint"] = None
     organisms["drag_selection"]["changed"] = False
 
-def reset_rotate_organism():
-    organisms["rotate"]["state"] = "idle"
-    organisms["rotate"]["pointer"] = None
-    organisms["rotate"]["node_id"] = None
-    organisms["rotate"]["start_checkpoint"] = None
-    organisms["rotate"]["start_angle"] = None
-    organisms["rotate"]["changed"] = False
+def reset_rotate_selection_organism():
+    organisms["rotate_selection"]["state"] = "idle"
+    organisms["rotate_selection"]["ids"][:] = []
+    organisms["rotate_selection"]["pivot"] = None
+    organisms["rotate_selection"]["start_angle"] = None
+    organisms["rotate_selection"]["originals"].clear()
+    organisms["rotate_selection"]["changed"] = False
+    judge_release("rotate_selection")
+
+def reset_size_selection_organism():
+    organisms["size_selection"]["state"] = "idle"
+    organisms["size_selection"]["ids"][:] = []
+    organisms["size_selection"]["handle_name"] = None
+    organisms["size_selection"]["pivot"] = None
+    organisms["size_selection"]["start_dist"] = None
+    organisms["size_selection"]["originals"].clear()
+    organisms["size_selection"]["changed"] = False
+    judge_release("size_selection")
 
 def reset_camera_organisms():
     cancel_timer("camera")
@@ -401,8 +412,8 @@ def run_organisms():
     run_create_object_organism()
     run_camera_pan_organism()
     run_camera_zoom_organism()
-    run_rotate_object_organism()
-    run_handle_target_organism()
+    run_rotate_selection_organism()
+    run_size_selection_organism()
     run_drag_selection_organism()
     run_marquee_select_organism()
     run_click_selection_organism()
@@ -595,83 +606,145 @@ def build_drag_delta(start_positions, updates):
             redo_delta.append({"op": "update_node", "id": nid, "fields": updates[nid]})
     return undo_delta, redo_delta
 
-def run_rotate_object_organism():
-    rotate = organisms["rotate"]
+def run_rotate_selection_organism():
+    rotate = organisms["rotate_selection"]
     if rotate["state"] == "idle":
-        start_rotate_organism()
+        start_rotate_selection_organism()
         return
     if rotate["state"] == "active":
-        update_rotate_organism()
+        update_rotate_selection_organism()
 
-def start_rotate_organism():
-    selected = selection_primary()
-    if not selected:
-        return
-    if not derived["buttons"]["b1_pressed"]:
-        return
-    if derived["target"]["kind"] == "handle":
-        return
-    if not judge_commit("rotate_object", ["mode:rotate_object", "selection:primary", "pointer:left", "selection", "node:" + selected]):
-        return
-    rotate = organisms["rotate"]
-    rotate["state"] = "active"
-    rotate["pointer"] = "left"
-    rotate["node_id"] = selected
-    rotate["start_checkpoint"] = snapshot_state()
-    rotate["start_angle"] = find_node(selected)["angle"]
-    rotate["changed"] = False
-
-def update_rotate_organism():
-    rotate = organisms["rotate"]
-    node = find_node(rotate["node_id"])
-    if not node:
-        stop_rotate_organism()
-        return
-    if derived["buttons"]["b1_released"]:
-        stop_rotate_organism()
-        return
-    if not derived["pointer"]["moving"]:
-        return
-    angle = current_rotate_angle(node)
-    emit_immediate({"type": "NODE_PREVIEW", "id": node["id"], "fields": {"angle": angle}})
-    rotate["changed"] = True
-
-def stop_rotate_organism():
-    rotate = organisms["rotate"]
-    if rotate["changed"]:
-        node = find_node(rotate["node_id"])
-        undo_delta = []
-        redo_delta = []
-        updates = {}
-        if node:
-            angle = current_rotate_angle(node)
-            updates[node["id"]] = {"angle": angle}
-            undo_delta.append({"op": "update_node", "id": node["id"], "fields": {"angle": rotate["start_angle"]}})
-            redo_delta.append({"op": "update_node", "id": node["id"], "fields": {"angle": angle}})
-        emit_event({
-            "type": "COMMIT_DRAG",
-            "checkpoint": rotate["start_checkpoint"],
-            "updates": updates,
-            "undo_delta": undo_delta,
-            "redo_delta": redo_delta,
-        })
-    reset_rotate_organism()
-    judge_release("rotate_object")
-
-def current_rotate_angle(node):
-    return math.degrees(math.atan2(derived["pointer"]["wy"] - node["y"], derived["pointer"]["wx"] - node["x"]))
-
-def run_handle_target_organism():
+def start_rotate_selection_organism():
     target = derived["target"]
-    if target["kind"] != "handle":
-        return
     if not derived["buttons"]["b1_pressed"]:
         return
-    resource = "handle:" + target["handle_kind"]
-    if not judge_commit("handle_target", ["mode:" + target["mode"], resource, "pointer:left"]):
+    if target["kind"] != "handle" or target["handle_kind"] != "rotate":
         return
-    status_set("Handle target: " + target["handle_name"])
-    judge_release("handle_target")
+    if not judge_commit("rotate_selection", ["mode:rotate_object", "handle:rotate", "pointer:left", "selection"]):
+        return
+    ids = existing_ids(selection_ids())
+    if not ids:
+        judge_release("rotate_selection")
+        return
+    pivot = pivot_for_selection(ids)
+    if not pivot:
+        judge_release("rotate_selection")
+        return
+    rotate = organisms["rotate_selection"]
+    rotate["state"] = "active"
+    rotate["ids"][:] = ids
+    rotate["pivot"] = pivot
+    rotate["start_angle"] = angle_from(pivot, (derived["pointer"]["wx"], derived["pointer"]["wy"]))
+    rotate["originals"].clear()
+    for nid in ids:
+        node = find_node(nid)
+        if node:
+            rotate["originals"][nid] = copy_fields(node, ("x", "y", "angle"))
+    rotate["changed"] = False
+    status_set("Rotate object(s)")
+
+def update_rotate_selection_organism():
+    if derived["buttons"]["b1_released"]:
+        stop_rotate_selection_organism()
+        return
+    updates = current_rotate_selection_updates()
+    if updates:
+        emit_immediate({"type": "NODE_PREVIEW_MAP", "updates": updates})
+        organisms["rotate_selection"]["changed"] = True
+
+def stop_rotate_selection_organism():
+    rotate = organisms["rotate_selection"]
+    updates = current_rotate_selection_updates()
+    if rotate["changed"] and updates:
+        emit_event({"type": "ROTATE_SELECTION", "updates": updates})
+    reset_rotate_selection_organism()
+    judge_release("rotate_selection")
+
+def current_rotate_selection_updates():
+    rotate = organisms["rotate_selection"]
+    pivot = rotate["pivot"]
+    if not pivot:
+        return {}
+    current = angle_from(pivot, (derived["pointer"]["wx"], derived["pointer"]["wy"]))
+    delta = current - rotate["start_angle"]
+    return transform_nodes_for_rotation(rotate["originals"], rotate["ids"], pivot, delta)
+
+def run_size_selection_organism():
+    size = organisms["size_selection"]
+    if size["state"] == "idle":
+        start_size_selection_organism()
+        return
+    if size["state"] == "active":
+        update_size_selection_organism()
+
+def start_size_selection_organism():
+    target = derived["target"]
+    if not derived["buttons"]["b1_pressed"]:
+        return
+    if target["kind"] != "handle" or target["handle_kind"] != "size":
+        return
+    if not judge_commit("size_selection", ["mode:size_object", "handle:size", "pointer:left", "selection"]):
+        return
+    ids = existing_ids(selection_ids())
+    if not ids:
+        judge_release("size_selection")
+        return
+    pivot = pivot_for_selection(ids)
+    if not pivot:
+        judge_release("size_selection")
+        return
+    start_dist = distance(pivot, (derived["pointer"]["wx"], derived["pointer"]["wy"]))
+    if start_dist <= 0:
+        judge_release("size_selection")
+        return
+    size = organisms["size_selection"]
+    size["state"] = "active"
+    size["ids"][:] = ids
+    size["handle_name"] = target["handle_name"]
+    size["pivot"] = pivot
+    size["start_dist"] = start_dist
+    size["originals"].clear()
+    for nid in ids:
+        node = find_node(nid)
+        if node:
+            size["originals"][nid] = copy_fields(node, ("x", "y", "w", "h", "angle"))
+    size["changed"] = False
+    status_set("Size object(s)")
+
+def update_size_selection_organism():
+    if derived["buttons"]["b1_released"]:
+        stop_size_selection_organism()
+        return
+    updates = current_size_selection_updates()
+    if updates:
+        emit_immediate({"type": "NODE_PREVIEW_MAP", "updates": updates})
+        organisms["size_selection"]["changed"] = True
+
+def stop_size_selection_organism():
+    size = organisms["size_selection"]
+    updates = current_size_selection_updates()
+    if size["changed"] and updates:
+        emit_event({"type": "SIZE_SELECTION", "updates": updates})
+    reset_size_selection_organism()
+    judge_release("size_selection")
+
+def current_size_selection_updates():
+    size = organisms["size_selection"]
+    pivot = size["pivot"]
+    if not pivot or not size["start_dist"]:
+        return {}
+    current_dist = distance(pivot, (derived["pointer"]["wx"], derived["pointer"]["wy"]))
+    scale = max(0.05, current_dist / size["start_dist"])
+    return transform_nodes_for_scale(size["originals"], size["ids"], pivot, scale)
+
+def pivot_for_selection(ids):
+    if len(ids) == 1:
+        node = find_node(ids[0])
+        return (node["x"], node["y"])
+    bounds = selected_bounds_world()
+    if not bounds:
+        return None
+    return center_of_bounds(bounds)
 
 def run_marquee_select_organism():
     marquee = organisms["marquee_select"]

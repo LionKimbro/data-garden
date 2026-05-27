@@ -1,0 +1,140 @@
+{
+  "document": {
+    "document-id": "datagarden.manipulation-transforms.rotate-and-size.v1",
+    "title": "Manipulation Transforms: Rotate Object(s) and Size Object(s)",
+    "filename": "0003__manipulation-transforms-rotate-and-size.json",
+    "status": "implemented-note",
+    "purpose": "Record the first working rotate and size handle transformations for Data Garden."
+  },
+  "summary": "RO and SO now perform handle-driven transforms through CIRA organisms. RO rotates the selected object around its center or rotates multiple selected objects around the selected group bounds center. SO uniformly scales the selected object or selected group from the same center-based pivot. Preview frames use immediates and the world is mutated only on release.",
+  "organisms": {
+    "module": "data_garden.continuity.input_and_organisms",
+    "added": [
+      "rotate_selection",
+      "size_selection"
+    ],
+    "functions": [
+      "run_rotate_selection_organism()",
+      "start_rotate_selection_organism()",
+      "update_rotate_selection_organism()",
+      "stop_rotate_selection_organism()",
+      "run_size_selection_organism()",
+      "start_size_selection_organism()",
+      "update_size_selection_organism()",
+      "stop_size_selection_organism()"
+    ],
+    "notes": [
+      "Both organisms start only from left-button press on the matching handle target in DERIVED.",
+      "The previous node-press rotate organism was removed so RO rotation is handle-driven.",
+      "Organisms compute preview/final update maps but do not mutate world state and do not build undo deltas."
+    ]
+  },
+  "judge-resources": {
+    "rotate": [
+      "mode:rotate_object",
+      "handle:rotate",
+      "pointer:left",
+      "selection"
+    ],
+    "size": [
+      "mode:size_object",
+      "handle:size",
+      "pointer:left",
+      "selection"
+    ]
+  },
+  "immediate-preview-shape": {
+    "type": "NODE_PREVIEW_MAP",
+    "updates": {
+      "node-id": {
+        "x": "preview x",
+        "y": "preview y",
+        "angle": "preview angle for rotation",
+        "w": "preview width for sizing",
+        "h": "preview height for sizing"
+      }
+    },
+    "notes": [
+      "Rotation previews update x, y, and angle.",
+      "Size previews update x, y, w, and h.",
+      "Projection already merges NODE_PREVIEW_MAP fields into projected nodes."
+    ]
+  },
+  "semantic-commit-events": {
+    "ROTATE_SELECTION": {
+      "updates": {
+        "node-id": {
+          "x": "final x",
+          "y": "final y",
+          "angle": "final angle"
+        }
+      }
+    },
+    "SIZE_SELECTION": {
+      "updates": {
+        "node-id": {
+          "x": "final x",
+          "y": "final y",
+          "w": "final width",
+          "h": "final height"
+        }
+      }
+    }
+  },
+  "world-deltas": {
+    "module": "data_garden.discrete.reducer route_effect(WORLD_UPDATE_NODE_MAP)",
+    "rotation-fields": [
+      "x",
+      "y",
+      "angle"
+    ],
+    "size-fields": [
+      "x",
+      "y",
+      "w",
+      "h"
+    ],
+    "policy": [
+      "The effect handler captures before fields from the World Model.",
+      "The effect handler applies final update maps.",
+      "The effect handler records one world revision with undo and redo update_node notes.",
+      "No canvas item ids or full-world snapshots are stored in deltas."
+    ]
+  },
+  "undo-redo": {
+    "behavior": [
+      "A completed rotate operation is one undoable operation.",
+      "A completed size operation is one undoable operation.",
+      "Undo restores the prior world_revision_guid through the history checkpoint.",
+      "Redo reapplies the committed world revision.",
+      "Selection ids and primary selection are preserved when the nodes still exist."
+    ],
+    "history-shape": "History snapshots continue to store workspace state plus world_revision_guid, not full world snapshots."
+  },
+  "scaling-policy": {
+    "current": "center-based uniform scaling",
+    "single-selection-pivot": "selected node center",
+    "multi-selection-pivot": "center of selected axis-aligned world bounds",
+    "scale": "current pointer distance from pivot divided by starting pointer distance from pivot",
+    "minimum-scale": 0.05,
+    "not-yet-implemented": [
+      "opposite-corner anchored scaling",
+      "non-uniform scaling",
+      "side handles"
+    ]
+  },
+  "known-limitations": [
+    "Size handles all use center-based uniform scaling regardless of which corner is dragged.",
+    "There is no snapping or angle constraint behavior.",
+    "Group rotation uses axis-aligned selected world bounds as the pivot source, not oriented bounds.",
+    "Handle styling and cursor feedback remain simple."
+  ],
+  "suggested-next-work": [
+    "opposite-corner anchored scaling",
+    "optional non-uniform scaling",
+    "side handles",
+    "snapping and angle constraints",
+    "projection reconciliation if visuals become complex",
+    "better handle styling and cursor changes"
+  ]
+}

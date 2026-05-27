@@ -29,6 +29,8 @@ def reduce_event(event):
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
         reset_chord_organism()
+        reset_rotate_selection_organism()
+        reset_size_selection_organism()
         effects.append({"type": "STATUS", "text": "Ready"})
         return
 
@@ -109,6 +111,16 @@ def reduce_event(event):
         effects.append({"type": "HISTORY_REMEMBER", "checkpoint": event["checkpoint"], "label": "Camera"})
         return
 
+    if kind == "ROTATE_SELECTION":
+        effects.append({"type": "WORLD_UPDATE_NODE_MAP", "updates": event["updates"], "label": "Rotate"})
+        effects.append({"type": "STATUS", "text": "Rotated selection"})
+        return
+
+    if kind == "SIZE_SELECTION":
+        effects.append({"type": "WORLD_UPDATE_NODE_MAP", "updates": event["updates"], "label": "Size"})
+        effects.append({"type": "STATUS", "text": "Sized selection"})
+        return
+
     if kind == "ROTATE_NODE":
         effects.append({"type": "WORLD_UPDATE_NODE", "id": event["id"], "fields": {"angle": event["angle"]}})
         return
@@ -163,14 +175,18 @@ def reduce_command(code):
         return
     if code == "RO":
         workspace["mode"] = "rotate_object"
+        effects.append({"type": "STATUS", "text": "Rotate object(s)"})
         return
     if code == "SO":
         workspace["mode"] = "size_object"
+        effects.append({"type": "STATUS", "text": "Size object(s)"})
         return
     if code == "AA":
         selection_clear()
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
+        reset_rotate_selection_organism()
+        reset_size_selection_organism()
         effects.append({"type": "INSPECTOR_REFRESH"})
         return
     if code == "UU":
@@ -304,12 +320,15 @@ def route_effect(effect):
         ids = existing_ids(effect["updates"].keys())
         if not ids:
             return
+        if not update_map_changed(effect["updates"]):
+            return
+        label = effect.get("label", "Update")
         if effect.get("checkpoint", True):
-            remember_current("Update")
+            remember_current(label)
             undo_delta, redo_delta = build_update_map_delta(effect["updates"])
         update_node_map(effect["updates"])
         if effect.get("checkpoint", True):
-            record_world_revision("Update", undo_delta, redo_delta)
+            record_world_revision(label, undo_delta, redo_delta)
         effects.append({"type": "INSPECTOR_REFRESH"})
         return
 
