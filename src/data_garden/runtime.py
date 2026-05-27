@@ -26,7 +26,7 @@ def pump_events():
 # MAIN
 # -----------------------
 
-def main():
+def main(firstload=None):
     root = tk.Tk()
     widgets["root"] = root
 
@@ -38,6 +38,8 @@ def main():
     ttk.Style(root)
     build_ui()
     bind_events()
+    if firstload:
+        load_project_from_path(firstload)
     refresh_projection()
     root.mainloop()
 

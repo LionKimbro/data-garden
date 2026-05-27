@@ -6,7 +6,7 @@ from data_garden import runtime
 
 def run_default():
     wiring.wire()
-    runtime.main()
+    runtime.main(app.ctx["execpath.firstload"])
 
 
 def declare_cli():
@@ -18,6 +18,8 @@ def declare_cli():
     )
     app.declare_projectdir('.datagarden')
     app.set_flag('search_upwards_for_project_dir', True)
+    app.declare_key('execpath.firstload', '')
+    app.describe_key('execpath.firstload', 'Project JSON file to load when the GUI starts')
     app.declare_cmd('', run_default)
     app.describe_cmd('', 'Launch the Data Garden GUI')
 

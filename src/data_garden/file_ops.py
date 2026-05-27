@@ -25,6 +25,9 @@ def file_open():
     path = filedialog.askopenfilename(filetypes=[("JSON", "*.json"), ("All", "*.*")])
     if not path:
         return
+    load_project_from_path(path)
+
+def load_project_from_path(path):
     try:
         data = read_json(path)
     except Exception as err:
@@ -32,8 +35,8 @@ def file_open():
         return
     emit_event({"type": "LOAD_PROJECT", "data": data})
     pump_events()
-    g["filepath"] = path
-    status_set("Opened " + os.path.basename(path))
+    g["filepath"] = str(path)
+    status_set("Opened " + os.path.basename(str(path)))
     refresh_projection()
 
 def file_save():
