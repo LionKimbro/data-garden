@@ -373,6 +373,26 @@ def transform_nodes_for_scale(originals, ids, pivot, scale):
             }
     return updates
 
+def node_display_title(node):
+    title = node["title"].strip()
+    if not title and "text" in node:
+        title = str(node["text"]).strip().splitlines()[0]
+    if not title:
+        title = node["id"]
+    if len(title) > 60:
+        title = title[:57] + "..."
+    return title
+
+def hover_status_for_node(node):
+    title = node_display_title(node)
+    if title == node["id"]:
+        text = "Hover: " + node["id"] + "  (" + node["kind"] + ")"
+    else:
+        text = "Hover: " + title + "  (" + node["id"] + ", " + node["kind"] + ")"
+    if node["url"].strip():
+        text += " [link]"
+    return text
+
 def copy_node(node):
     copied = {}
     for key in NODE_KEYS:

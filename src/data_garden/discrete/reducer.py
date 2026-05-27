@@ -287,6 +287,9 @@ def route_effect(effect):
             undo_delta.append({"op": "restore_node", "node": copy_node(node), "index": node_index(nid)})
             redo_delta.append({"op": "delete_node", "id": nid})
         delete_nodes(ids)
+        if workspace["hover"]["id"] not in existing_ids([workspace["hover"]["id"]]):
+            workspace["hover"]["id"] = None
+            status_hover_clear()
         record_world_revision("Delete", undo_delta, redo_delta)
         emit_event({"type": "SET_SELECTION", "ids": [], "primary": None})
         effects.append({"type": "STATUS", "text": "Object deleted"})
@@ -352,6 +355,8 @@ def route_effect(effect):
         return
 
     if kind == "WORLD_NEW":
+        workspace["hover"]["id"] = None
+        status_hover_clear()
         reset_world()
         reset_world_revisions("New")
         clear_history()
@@ -359,6 +364,8 @@ def route_effect(effect):
         return
 
     if kind == "WORLD_LOAD":
+        workspace["hover"]["id"] = None
+        status_hover_clear()
         load_world(effect["data"])
         reset_world_revisions("Load")
         clear_history()

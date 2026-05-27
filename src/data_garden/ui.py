@@ -145,6 +145,7 @@ def bind_events():
     canvas.bind("<Enter>", on_canvas_enter)
     canvas.bind("<Leave>", on_canvas_leave)
     canvas.bind("<Configure>", on_canvas_configure)
+    canvas.bind("<Motion>", on_mouse_motion)
 
     canvas.bind("<Button-1>", on_left_press)
     canvas.bind("<B1-Motion>", on_left_drag)

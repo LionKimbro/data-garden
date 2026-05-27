@@ -6,6 +6,8 @@ g = {
     "filepath": None,
     "canvas_hot": False,
     "restoring_history": False,
+    "base_status": "Ready",
+    "hover_status": "",
 }
 
 widgets = {}
@@ -121,6 +123,9 @@ workspace = {
     "manipulation": {
         "kind": "size",
         "visible": False,
+    },
+    "hover": {
+        "id": None,
     },
     "mode": None,
     "awaiting_click_for": None,

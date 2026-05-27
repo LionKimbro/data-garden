@@ -1,0 +1,61 @@
+{
+  "document": {
+    "document-id": "datagarden.hover-title-status.v1",
+    "title": "Hover Title / Status",
+    "filename": "0005__hover-title-status.json",
+    "status": "implemented-note",
+    "purpose": "Record lightweight status-bar hover feedback for nodes."
+  },
+  "summary": "When the pointer hovers over a node, the status bar temporarily shows the node title, id, and kind. Untitled nodes show id and kind. Nodes with a URL append [link]. Moving off the node clears the hover overlay and restores the prior base status.",
+  "target-tokenization": {
+    "module": "data_garden.continuity.input_and_organisms",
+    "source": "tokenize_target() continues to produce DERIVED target facts with kind node and node_id when the pointer is over a node.",
+    "pointer-motion": "The canvas now binds Motion to a thin callback that updates RAW pointer facts and runs the app cycle."
+  },
+  "hover-organism": {
+    "module": "data_garden.continuity.input_and_organisms",
+    "function": "run_hover_status_organism()",
+    "behavior": [
+      "Reads derived target facts.",
+      "Compares the target node id against workspace.hover.id.",
+      "Updates hover status only when the target changes.",
+      "Clears hover on empty target, handle target, canvas leave, project new/load, or hovered node deletion."
+    ]
+  },
+  "status-overlay": {
+    "module": "data_garden.inspector",
+    "helpers": [
+      "status_set(text)",
+      "status_hover_set(text)",
+      "status_hover_clear()",
+      "status_render()"
+    ],
+    "policy": "status_set updates g.base_status. Hover updates g.hover_status. The actual label renders hover_status when present, otherwise base_status."
+  },
+  "formatting": {
+    "helpers": [
+      "node_display_title(node)",
+      "hover_status_for_node(node)"
+    ],
+    "examples": [
+      "Hover: Garden Gate  (n4, rect)",
+      "Hover: n7  (circle)",
+      "Hover: Meeting Notes  (n12, rect) [link]"
+    ],
+    "title-limit": "Titles longer than 60 characters are truncated."
+  },
+  "non-effects": [
+    "Hover is not undoable.",
+    "Hover is not saved to project JSON.",
+    "Hover does not create history checkpoints.",
+    "Hover does not create world revisions.",
+    "Hover does not change selection.",
+    "Hover does not change inspector contents."
+  ],
+  "known-limitations": [
+    "No canvas callouts yet.",
+    "No text canvas items yet.",
+    "No inspector hover preview."
+  ],
+  "suggested-next-task": "marquee selection callouts"
+}

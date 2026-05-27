@@ -33,6 +33,11 @@ def on_canvas_leave(e):
 def on_canvas_configure(e):
     refresh_projection()
 
+def on_mouse_motion(e):
+    raw_update_pointer(e)
+    raw["current"]["last_event_kind"] = "motion"
+    run_app_cycle()
+
 def on_keydown(e):
     if e.keysym == "Escape":
         raw_set_key(e.keysym, True)
@@ -404,6 +409,7 @@ def tokenize_wheel():
     }
 
 def run_organisms():
+    run_hover_status_organism()
     run_chord_organism()
     run_awaiting_target_organism()
     run_create_object_organism()
@@ -414,6 +420,21 @@ def run_organisms():
     run_drag_selection_organism()
     run_marquee_select_organism()
     run_click_selection_organism()
+
+def run_hover_status_organism():
+    target = derived["target"]
+    nid = target["node_id"] if target["kind"] == "node" else None
+    if workspace["hover"]["id"] == nid:
+        return
+    workspace["hover"]["id"] = nid
+    if not nid:
+        status_hover_clear()
+        return
+    node = find_node(nid)
+    if node:
+        status_hover_set(hover_status_for_node(node))
+    else:
+        status_hover_clear()
 
 def run_chord_organism():
     key = derived["keyboard"]["key_pressed"]

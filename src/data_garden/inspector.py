@@ -95,6 +95,19 @@ def clone_selected():
     refresh_projection()
 
 def status_set(text):
+    g["base_status"] = text
+    status_render()
+
+def status_hover_set(text):
+    g["hover_status"] = text
+    status_render()
+
+def status_hover_clear():
+    g["hover_status"] = ""
+    status_render()
+
+def status_render():
     if "status" not in widgets:
         return
+    text = g["hover_status"] or g["base_status"]
     widgets["status"].config(text=text)
