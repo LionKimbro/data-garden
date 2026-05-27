@@ -118,7 +118,9 @@ def draw_selection():
 def draw_manipulation_frame():
     canvas = widgets["canvas"]
     canvas.delete("manipulation")
-    if workspace["mode"] not in ("rotate_object", "size_object"):
+    if not workspace["manipulation"]["visible"]:
+        return
+    if not selection_ids():
         return
     bounds = selected_bounds_world()
     if not bounds:
@@ -134,9 +136,9 @@ def draw_manipulation_frame():
         dash=(5, 3),
         tags=("manipulation",),
     )
-    if workspace["mode"] == "rotate_object":
+    if workspace["manipulation"]["kind"] == "rotate":
         draw_rotate_handle(points)
-    if workspace["mode"] == "size_object":
+    if workspace["manipulation"]["kind"] == "size":
         draw_size_handles()
 
 def draw_rotate_handle(points):

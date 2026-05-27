@@ -1,0 +1,87 @@
+{
+  "document": {
+    "document-id": "datagarden.direct-manipulation-cleanup.v1",
+    "title": "Direct Manipulation Cleanup",
+    "filename": "0004__direct-manipulation-cleanup.json",
+    "status": "implemented-note",
+    "purpose": "Record the cleanup that made object manipulation direct and conventional."
+  },
+  "summary": "Object manipulation is now driven by mouse interaction. Body drag moves selected object(s), size handles scale selected object(s), rotate handles rotate selected object(s), and clicking an already-selected object toggles handle kind between size and rotate. The rotate and size chord commands were removed from command handling.",
+  "removals": {
+    "rotate-command": "Removed from command mapping and reducer command handling.",
+    "size-command": "Removed from command mapping and reducer command handling.",
+    "move-command": "Remains absent.",
+    "secondary-button-drag": "Remains absent."
+  },
+  "manipulation-state": {
+    "location": "workspace.manipulation",
+    "shape": {
+      "kind": "size or rotate",
+      "visible": true
+    },
+    "policy": [
+      "No selection hides manipulation handles.",
+      "Fresh selection shows size handles.",
+      "Clicking an already-selected body toggles size and rotate handles.",
+      "Toggling handles is not undoable."
+    ]
+  },
+  "interaction-distinction": {
+    "body-drag": "drag_selection starts from DERIVED target kind node and claims pointer:left plus selection.",
+    "rotate-drag": "rotate_selection starts from DERIVED target kind handle with handle_kind rotate and claims handle:rotate.",
+    "size-drag": "size_selection starts from DERIVED target kind handle with handle_kind size and claims handle:size.",
+    "marquee-drag": "marquee_select starts from empty target on the canvas.",
+    "click-toggle": "drag_selection toggles manipulation kind on release when the press began on an already-selected node and did not cross the drag threshold."
+  },
+  "judge-resources": [
+    "pointer:left",
+    "selection",
+    "handle:rotate",
+    "handle:size",
+    "selection-preview",
+    "camera"
+  ],
+  "derived-target-facts": {
+    "empty": {
+      "kind": "empty",
+      "node_id": null,
+      "handle_kind": null,
+      "handle_name": null,
+      "manipulation_kind": null
+    },
+    "node": {
+      "kind": "node",
+      "node_id": "node id",
+      "handle_kind": null,
+      "handle_name": null,
+      "manipulation_kind": "current visible manipulation kind or null"
+    },
+    "handle": {
+      "kind": "handle",
+      "node_id": null,
+      "handle_kind": "rotate or size",
+      "handle_name": "rotate, nw, ne, sw, or se",
+      "manipulation_kind": "rotate or size"
+    }
+  },
+  "ctrl-enter-apply": {
+    "location": "data_garden.ui",
+    "bindings": [
+      "<Control-Return>",
+      "<Control-KP_Enter>"
+    ],
+    "behavior": "The shortcut calls apply_inspector() from inspector entry and note widgets and returns break so note fields do not insert a newline."
+  },
+  "known-limitations": [
+    "Size handles still use center-based uniform scaling.",
+    "No side handles or non-uniform scaling yet.",
+    "No snapping or constrained-angle rotation yet."
+  ],
+  "suggested-next-work": [
+    "opposite-corner anchored scaling",
+    "optional non-uniform scaling",
+    "side handles",
+    "snapping and angle constraints",
+    "better handle styling and cursor feedback"
+  ]
+}

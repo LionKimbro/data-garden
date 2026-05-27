@@ -51,19 +51,21 @@ def frame_points_screen(bounds):
     }
 
 def handle_specs_for_selection():
-    if workspace["mode"] not in ("rotate_object", "size_object"):
+    if not workspace["manipulation"]["visible"]:
+        return []
+    if not selection_ids():
         return []
     bounds = selected_bounds_world()
     if not bounds:
         return []
     points = frame_points_screen(bounds)
-    if workspace["mode"] == "rotate_object":
+    if workspace["manipulation"]["kind"] == "rotate":
         x, y = points["n"]
         return [{
             "kind": "handle",
             "handle_kind": "rotate",
             "handle_name": "rotate",
-            "mode": workspace["mode"],
+            "manipulation_kind": workspace["manipulation"]["kind"],
             "shape": "circle",
             "sx": x,
             "sy": y - 28,
@@ -76,7 +78,7 @@ def handle_specs_for_selection():
             "kind": "handle",
             "handle_kind": "size",
             "handle_name": name,
-            "mode": workspace["mode"],
+            "manipulation_kind": workspace["manipulation"]["kind"],
             "shape": "square",
             "sx": x,
             "sy": y,
@@ -93,7 +95,7 @@ def handle_hit_test(sx, sy):
                 "node_id": None,
                 "handle_kind": spec["handle_kind"],
                 "handle_name": spec["handle_name"],
-                "mode": spec["mode"],
+                "manipulation_kind": spec["manipulation_kind"],
             }
     return None
 

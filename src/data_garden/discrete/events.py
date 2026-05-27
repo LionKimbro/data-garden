@@ -36,6 +36,22 @@ def selection_set(ids, primary=None):
     workspace["selection"]["ids"][:] = clean
     workspace["selection"]["primary"] = primary
 
+def manipulation_show(kind="size"):
+    workspace["manipulation"]["kind"] = kind
+    workspace["manipulation"]["visible"] = bool(selection_ids())
+
+def manipulation_hide():
+    workspace["manipulation"]["visible"] = False
+
+def manipulation_toggle():
+    if not selection_ids():
+        manipulation_hide()
+        return
+    if workspace["manipulation"]["kind"] == "size":
+        manipulation_show("rotate")
+    else:
+        manipulation_show("size")
+
 def selection_clear():
     selection_set([], None)
 

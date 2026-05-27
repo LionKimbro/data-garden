@@ -31,6 +31,7 @@ def reduce_event(event):
         reset_chord_organism()
         reset_rotate_selection_organism()
         reset_size_selection_organism()
+        manipulation_hide()
         effects.append({"type": "STATUS", "text": "Ready"})
         return
 
@@ -44,7 +45,15 @@ def reduce_event(event):
             selection_set(event["ids"], event.get("primary"))
         else:
             selection_single(event["id"])
+        if selection_ids():
+            manipulation_show("size")
+        else:
+            manipulation_hide()
         effects.append({"type": "INSPECTOR_REFRESH"})
+        return
+
+    if kind == "TOGGLE_MANIPULATION":
+        manipulation_toggle()
         return
 
     if kind == "UNDO":
@@ -121,10 +130,6 @@ def reduce_event(event):
         effects.append({"type": "STATUS", "text": "Sized selection"})
         return
 
-    if kind == "ROTATE_NODE":
-        effects.append({"type": "WORLD_UPDATE_NODE", "id": event["id"], "fields": {"angle": event["angle"]}})
-        return
-
     if kind == "SET_CAMERA":
         workspace["camera"]["scale"] = event["scale"]
         workspace["camera"]["ox"] = event["ox"]
@@ -135,8 +140,13 @@ def reduce_event(event):
         effects.append({"type": "OPEN_LINK", "id": event["id"]})
         return
 
+    if kind == "SAVE_FILE":
+        effects.append({"type": "SAVE_FILE"})
+        return
+
     if kind == "NEW_PROJECT":
         selection_clear()
+        manipulation_hide()
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
         reset_camera()
@@ -148,6 +158,7 @@ def reduce_event(event):
 
     if kind == "LOAD_PROJECT":
         selection_clear()
+        manipulation_hide()
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
         load_camera(event["data"])
@@ -173,16 +184,9 @@ def reduce_command(code):
     if code == "CC":
         workspace["mode"] = "create_circle"
         return
-    if code == "RO":
-        workspace["mode"] = "rotate_object"
-        effects.append({"type": "STATUS", "text": "Rotate object(s)"})
-        return
-    if code == "SO":
-        workspace["mode"] = "size_object"
-        effects.append({"type": "STATUS", "text": "Size object(s)"})
-        return
     if code == "AA":
         selection_clear()
+        manipulation_hide()
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
         reset_rotate_selection_organism()
@@ -194,6 +198,9 @@ def reduce_command(code):
         return
     if code == "RR":
         effects.append({"type": "HISTORY_REDO"})
+        return
+    if code == "SF":
+        effects.append({"type": "SAVE_FILE"})
         return
 
     reduce_object_command(code, selection_primary())
@@ -387,6 +394,10 @@ def route_effect(effect):
 
     if kind == "OPEN_LINK":
         open_node_link(effect["id"])
+        return
+
+    if kind == "SAVE_FILE":
+        file_save()
         return
 
 def ask_color(ids):

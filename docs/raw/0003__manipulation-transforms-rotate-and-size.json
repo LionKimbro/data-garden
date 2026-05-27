@@ -6,7 +6,7 @@
     "status": "implemented-note",
     "purpose": "Record the first working rotate and size handle transformations for Data Garden."
   },
-  "summary": "RO and SO now perform handle-driven transforms through CIRA organisms. RO rotates the selected object around its center or rotates multiple selected objects around the selected group bounds center. SO uniformly scales the selected object or selected group from the same center-based pivot. Preview frames use immediates and the world is mutated only on release.",
+  "summary": "Rotate and size handles perform direct transforms through CIRA organisms. The rotate handle rotates the selected object around its center or rotates multiple selected objects around the selected group bounds center. Size handles uniformly scale the selected object or selected group from the same center-based pivot. Preview frames use immediates and the world is mutated only on release.",
   "organisms": {
     "module": "data_garden.continuity.input_and_organisms",
     "added": [
@@ -25,19 +25,17 @@
     ],
     "notes": [
       "Both organisms start only from left-button press on the matching handle target in DERIVED.",
-      "The previous node-press rotate organism was removed so RO rotation is handle-driven.",
+      "The previous node-press rotate organism was removed so rotation is handle-driven.",
       "Organisms compute preview/final update maps but do not mutate world state and do not build undo deltas."
     ]
   },
   "judge-resources": {
     "rotate": [
-      "mode:rotate_object",
       "handle:rotate",
       "pointer:left",
       "selection"
     ],
     "size": [
-      "mode:size_object",
       "handle:size",
       "pointer:left",
       "selection"

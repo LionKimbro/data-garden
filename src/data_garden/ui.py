@@ -55,6 +55,7 @@ def build_ui():
 
 def build_inspector():
     right = widgets["right"]
+    widgets["inspector_apply_widgets"] = []
     widgets["var_id"] = tk.StringVar()
     widgets["var_kind"] = tk.StringVar()
     widgets["var_title"] = tk.StringVar()
@@ -76,6 +77,7 @@ def build_inspector():
         i = row["i"] - 1
         entry = ttk.Entry(right, textvariable=var, width=36)
         entry.grid(row=i, column=1, sticky="ew", padx=8)
+        widgets["inspector_apply_widgets"].append(entry)
         return entry
 
     def btn(text, fn):
@@ -101,12 +103,24 @@ def build_inspector():
     text = tk.Text(right, height=10, wrap="word")
     text.grid(row=i, column=1, sticky="nsew", padx=8, pady=4)
     widgets["txt_note"] = text
+    widgets["inspector_apply_widgets"].append(text)
     right.rowconfigure(i, weight=1)
 
     btn("Apply Changes", apply_inspector)
     btn("Open Link", open_link)
     btn("Delete", delete_selected)
     btn("Clone", clone_selected)
+    bind_inspector_apply_shortcuts()
+
+def bind_inspector_apply_shortcuts():
+    for widget in widgets["inspector_apply_widgets"]:
+        widget.bind("<Control-Return>", on_inspector_apply_shortcut)
+        widget.bind("<Control-KP_Enter>", on_inspector_apply_shortcut)
+
+def on_inspector_apply_shortcut(e):
+    if "var_title" in widgets:
+        apply_inspector()
+    return "break"
 
 # -----------------------
 # UI BINDINGS

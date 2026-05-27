@@ -62,6 +62,7 @@ organisms = {
         "state": "idle",
         "armed": False,
         "node_id": None,
+        "was_selected": False,
         "ids": [],
         "start_positions": {},
         "start_checkpoint": None,
@@ -116,6 +117,10 @@ workspace = {
     "selection": {
         "ids": [],
         "primary": None,
+    },
+    "manipulation": {
+        "kind": "size",
+        "visible": False,
     },
     "mode": None,
     "awaiting_click_for": None,

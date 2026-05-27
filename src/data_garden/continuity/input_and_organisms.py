@@ -218,10 +218,6 @@ def judge_resource_matches_context(resource):
         return workspace["mode"] is None and workspace["awaiting_click_for"] is None
     if resource == "mode:create_object":
         return workspace["mode"] in ("create_rect", "create_circle") and workspace["awaiting_click_for"] is None
-    if resource == "mode:rotate_object":
-        return workspace["mode"] == "rotate_object" and workspace["awaiting_click_for"] is None
-    if resource == "mode:size_object":
-        return workspace["mode"] == "size_object" and workspace["awaiting_click_for"] is None
     if resource == "mode:awaiting_target":
         return bool(workspace["awaiting_click_for"])
     if resource == "selection:primary":
@@ -266,6 +262,7 @@ def reset_drag_selection_organism():
     organisms["drag_selection"]["state"] = "idle"
     organisms["drag_selection"]["armed"] = False
     organisms["drag_selection"]["node_id"] = None
+    organisms["drag_selection"]["was_selected"] = False
     organisms["drag_selection"]["ids"][:] = []
     organisms["drag_selection"]["start_positions"].clear()
     organisms["drag_selection"]["start_checkpoint"] = None
@@ -367,7 +364,7 @@ def tokenize_target():
         "node_id": None,
         "handle_kind": None,
         "handle_name": None,
-        "mode": workspace["mode"],
+        "manipulation_kind": workspace["manipulation"]["kind"] if workspace["manipulation"]["visible"] else None,
     }
     nid = None
     if raw["current"]["inside_canvas"] and "canvas" in widgets:
@@ -504,6 +501,8 @@ def run_create_object_organism():
 def run_click_selection_organism():
     if not derived["buttons"]["b1_pressed"]:
         return
+    if derived["target"]["kind"] == "handle":
+        return
     if not judge_commit("click_selection", ["mode:neutral", "pointer:left", "selection"]):
         return
     emit_event({"type": "SET_SELECTION", "id": derived["target"]["node_id"]})
@@ -526,9 +525,10 @@ def start_drag_selection_organism():
     nid = derived["target"]["node_id"]
     if not nid:
         return
+    was_selected = selection_has(nid)
     if not judge_commit("drag_selection", ["mode:neutral", "pointer:left", "selection"]):
         return
-    if not selection_has(nid):
+    if not was_selected:
         emit_event({"type": "SET_SELECTION", "id": nid})
         ids = [nid]
     else:
@@ -537,6 +537,7 @@ def start_drag_selection_organism():
     drag["state"] = "armed"
     drag["armed"] = True
     drag["node_id"] = nid
+    drag["was_selected"] = was_selected
     drag["ids"][:] = ids
     drag["start_positions"].clear()
     for node_id in ids:
@@ -549,6 +550,8 @@ def start_drag_selection_organism():
 def update_armed_drag_selection():
     drag = organisms["drag_selection"]
     if derived["buttons"]["b1_released"]:
+        if drag["was_selected"]:
+            emit_event({"type": "TOGGLE_MANIPULATION"})
         reset_drag_selection_organism()
         judge_release("drag_selection")
         return
@@ -620,7 +623,7 @@ def start_rotate_selection_organism():
         return
     if target["kind"] != "handle" or target["handle_kind"] != "rotate":
         return
-    if not judge_commit("rotate_selection", ["mode:rotate_object", "handle:rotate", "pointer:left", "selection"]):
+    if not judge_commit("rotate_selection", ["handle:rotate", "pointer:left", "selection"]):
         return
     ids = existing_ids(selection_ids())
     if not ids:
@@ -683,7 +686,7 @@ def start_size_selection_organism():
         return
     if target["kind"] != "handle" or target["handle_kind"] != "size":
         return
-    if not judge_commit("size_selection", ["mode:size_object", "handle:size", "pointer:left", "selection"]):
+    if not judge_commit("size_selection", ["handle:size", "pointer:left", "selection"]):
         return
     ids = existing_ids(selection_ids())
     if not ids:

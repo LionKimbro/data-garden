@@ -6,19 +6,11 @@
     "status": "implemented-note",
     "purpose": "Record where manipulation frames and handle hit-target detection live after adding rotate and size mode handles."
   },
-  "summary": "Rotate Object(s) mode and Size Object(s) mode now display manipulation frames for the current selection. Rotate mode shows one handle above the frame. Size mode shows four corner handles. Handles are visible and tokenized as targets, but this change does not add resize transformations, group rotation math, group scaling math, the old move-object command, secondary-button drag, full-world snapshots, or new world revisions for showing handles."
+  "summary": "Direct manipulation displays manipulation frames for the current selection. Rotate handles and size handles are controlled by workspace manipulation state, not command modes. Handles are visible and tokenized as targets without adding the old move-object command, secondary-button drag, full-world snapshots, or new world revisions for showing handles."
   ,
   "commands": {
-    "RO": {
-      "meaning": "Rotate Object(s)",
-      "workspace-mode": "rotate_object",
-      "current-transform-status": "Handle-driven rotation is implemented in 0003__manipulation-transforms-rotate-and-size.json."
-    },
-    "SO": {
-      "meaning": "Size Object(s)",
-      "workspace-mode": "size_object",
-      "current-transform-status": "Handle-driven center-uniform scaling is implemented in 0003__manipulation-transforms-rotate-and-size.json."
-    }
+    "rotate": "The rotate handle is shown when workspace.manipulation.kind is rotate.",
+    "size": "Size handles are shown when workspace.manipulation.kind is size."
   },
   "frame-computation": {
     "module": "data_garden.world.model",
@@ -42,8 +34,8 @@
     ],
     "policy": [
       "Handles are projected in screen space from the selected world bounds.",
-      "rotate_object creates one circular rotate handle above the top-center of the frame.",
-      "size_object creates square corner handles named nw, ne, sw, and se."
+      "Rotate manipulation creates one circular rotate handle above the top-center of the frame.",
+      "Size manipulation creates square corner handles named nw, ne, sw, and se."
     ]
   },
   "projection-drawing": {
@@ -54,7 +46,7 @@
       "draw_size_handles()"
     ],
     "policy": [
-      "Projection draws frames only when the selection is non-empty and workspace mode is rotate_object or size_object.",
+      "Projection draws frames only when the selection is non-empty and workspace manipulation state is visible.",
       "Projection draws canvas items tagged manipulation.",
       "Projection reads workspace and world state but does not mutate semantic state or world state."
     ]
@@ -89,19 +81,16 @@
       "node_id": null,
       "handle_kind": "rotate or size",
       "handle_name": "rotate, nw, ne, sw, or se",
-      "mode": "rotate_object or size_object"
+      "manipulation_kind": "rotate or size"
     }
   },
   "judge-resources": {
     "reserved-or-used": [
-      "mode:rotate_object",
-      "mode:size_object",
       "handle:rotate",
       "handle:size"
     ],
     "notes": [
-      "mode:size_object was added as a context resource.",
-      "handle:rotate and handle:size are used by the placeholder handle target organism for resource coordination.",
+      "handle:rotate and handle:size are used by handle transformation organisms for resource coordination.",
       "No world mutation resources are claimed by handle detection."
     ]
   },

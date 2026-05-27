@@ -20,12 +20,11 @@ CHORD_BITS = {"a": 16, "s": 8, "d": 4, "f": 2, " ": 1}
 COMMAND_NAMES = {
     "CR": "Create Rectangle",
     "CC": "Create Circle",
-    "RO": "Rotate Object",
-    "SO": "Size Object",
     "CO": "Color Object",
     "DO": "Delete Object",
     "XO": "Clone Object",
     "OL": "Open Link",
+    "SF": "Save File",
     "AA": "Abandon Active",
     "UU": "Undo",
     "RR": "Redo",

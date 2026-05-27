@@ -76,6 +76,10 @@ def snapshot_workspace():
     return {
         "mode": workspace["mode"],
         "awaiting_click_for": workspace["awaiting_click_for"],
+        "manipulation": {
+            "kind": workspace["manipulation"]["kind"],
+            "visible": workspace["manipulation"]["visible"],
+        },
         "camera": {
             "scale": workspace["camera"]["scale"],
             "ox": workspace["camera"]["ox"],
@@ -90,6 +94,9 @@ def restore_snapshot(snapshot):
         live_primary = selection_primary()
         workspace["mode"] = snapshot["workspace"]["mode"]
         workspace["awaiting_click_for"] = snapshot["workspace"]["awaiting_click_for"]
+        if "manipulation" in snapshot["workspace"]:
+            workspace["manipulation"]["kind"] = snapshot["workspace"]["manipulation"]["kind"]
+            workspace["manipulation"]["visible"] = snapshot["workspace"]["manipulation"]["visible"]
         workspace["camera"]["scale"] = snapshot["workspace"]["camera"]["scale"]
         workspace["camera"]["ox"] = snapshot["workspace"]["camera"]["ox"]
         workspace["camera"]["oy"] = snapshot["workspace"]["camera"]["oy"]
@@ -106,9 +113,11 @@ def reconcile_selection(ids, primary):
     if primary not in valid:
         if valid:
             primary = valid[-1]
-        else:
-            primary = None
+    else:
+        primary = None
     selection_set(valid, primary)
+    if not valid:
+        manipulation_hide()
 
 def reset_continuity_for_time_jump():
     derived.clear()
