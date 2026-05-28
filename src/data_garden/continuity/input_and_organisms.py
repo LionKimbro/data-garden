@@ -54,6 +54,11 @@ def on_keydown(e):
         return "break"
     if focus_is_text_widget():
         return None
+    if e.keysym == "Delete":
+        emit_event({"type": "COMMAND_ENTERED", "code": "DO"})
+        pump_events()
+        refresh_projection()
+        return "break"
     raw_set_key(e.keysym, True)
     raw["current"]["last_event_kind"] = "key_press"
     raw["current"]["last_key"] = e.keysym
@@ -225,7 +230,7 @@ def judge_resource_matches_context(resource):
     if resource == "mode:neutral":
         return workspace["mode"] is None and workspace["awaiting_click_for"] is None
     if resource == "mode:create_object":
-        return workspace["mode"] in ("create_rect", "create_circle", "create_text") and workspace["awaiting_click_for"] is None
+        return workspace["mode"] in ("create_rect", "create_circle", "create_text", "paste_rect", "paste_circle", "paste_text") and workspace["awaiting_click_for"] is None
     if resource == "mode:awaiting_target":
         return bool(workspace["awaiting_click_for"])
     if resource == "selection:primary":
@@ -516,13 +521,60 @@ def run_create_object_organism():
         kind = "circle"
     if workspace["mode"] == "create_text":
         kind = "text"
-    emit_event({
+    if workspace["mode"] == "paste_rect":
+        kind = "rect"
+    if workspace["mode"] == "paste_circle":
+        kind = "circle"
+    event = {
         "type": "CREATE_NODE",
         "kind": kind,
         "x": derived["pointer"]["wx"],
         "y": derived["pointer"]["wy"],
-    })
+    }
+    if workspace["mode"] in ("paste_rect", "paste_circle"):
+        event["fields"] = fields_for_pasted_note()
+    if workspace["mode"] == "paste_text":
+        event["fields"] = fields_for_pasted_text()
+    emit_event(event)
     judge_release("create_object")
+
+def fields_for_pasted_note():
+    return {
+        "note": clipboard_text(),
+    }
+
+def fields_for_pasted_text():
+    text = clipboard_text()
+    title, note = pasted_text_title_and_note(text)
+    return {
+        "title": title,
+        "note": note,
+    }
+
+def clipboard_text():
+    root = widgets.get("root")
+    if not root:
+        return ""
+    try:
+        return root.clipboard_get()
+    except Exception:
+        return ""
+
+def pasted_text_title_and_note(text):
+    text = str(text).replace("\r\n", "\n").replace("\r", "\n")
+    lines = text.split("\n")
+    title = ""
+    for line in lines:
+        stripped = line.strip()
+        if stripped:
+            title = stripped
+            break
+    if not title:
+        title = "Text"
+    note = ""
+    if len(lines) > 1:
+        note = text
+    return title, note
 
 def run_click_selection_organism():
     if not derived["buttons"]["b1_pressed"]:

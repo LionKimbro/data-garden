@@ -13,6 +13,20 @@
     "mode": "create_text",
     "integration": "CT is in COMMAND_NAMES and reducer command handling, parallel to CR and CC."
   },
+  "paste-command": {
+    "code": "PT",
+    "name": "Paste Text",
+    "mode": "paste_text",
+    "behavior": "PT enters a text creation mode like CT. On canvas click, the create organism reads the clipboard and creates a text node at the clicked world position.",
+    "single-line": "Single-line clipboard text becomes the new node title.",
+    "multi-line": "If clipboard text has more than one line, the full clipboard text becomes the note body and the first non-blank line becomes the title.",
+    "empty-clipboard": "If no non-blank line exists, the title falls back to Text."
+  },
+  "paste-shape-commands": {
+    "PR": "Paste Rectangle creates a rectangle like CR and initializes its note from the clipboard.",
+    "PC": "Paste Circle creates a circle/oval like CC and initializes its note from the clipboard.",
+    "history": "The pasted note is applied before the create revision is recorded, so undo/redo treats each paste-create as one operation."
+  },
   "node-shape": {
     "kind": "text",
     "display-field": "title",

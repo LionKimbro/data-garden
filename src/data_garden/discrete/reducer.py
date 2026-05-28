@@ -83,6 +83,7 @@ def reduce_event(event):
             "kind": event["kind"],
             "x": event["x"],
             "y": event["y"],
+            "fields": event.get("fields", {}),
         })
         return
 
@@ -209,6 +210,15 @@ def reduce_command(code):
     if code == "CT":
         workspace["mode"] = "create_text"
         return
+    if code == "PR":
+        workspace["mode"] = "paste_rect"
+        return
+    if code == "PC":
+        workspace["mode"] = "paste_circle"
+        return
+    if code == "PT":
+        workspace["mode"] = "paste_text"
+        return
     if code == "AA":
         callouts_clear()
         selection_clear()
@@ -292,6 +302,9 @@ def route_effect(effect):
     if kind == "WORLD_CREATE_NODE":
         remember_current("Create")
         node = create_node(effect["kind"], effect["x"], effect["y"])
+        fields = effect.get("fields", {})
+        if fields:
+            update_node(node["id"], fields)
         record_world_revision(
             "Create",
             [{"op": "delete_node", "id": node["id"]}],
