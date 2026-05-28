@@ -42,6 +42,8 @@ def create_node(kind, x, y):
         "angle": 0.0,
         "fill": fill,
         "title": title,
+        "hook": "",
+        "tags": [],
         "url": "",
         "note": "",
         "zoom_min": zoom_min,

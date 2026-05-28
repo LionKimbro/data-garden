@@ -22,6 +22,8 @@ def refresh_inspector():
         widgets["var_id"].set("")
         widgets["var_kind"].set("")
         widgets["var_title"].set("")
+        widgets["var_hook"].set("")
+        widgets["var_tags"].set("")
         widgets["var_url"].set("")
         widgets["var_fill"].set("#6d4c41")
         widgets["var_w"].set(140)
@@ -37,6 +39,8 @@ def refresh_inspector():
     widgets["var_id"].set(node["id"])
     widgets["var_kind"].set(node["kind"])
     widgets["var_title"].set(node["title"])
+    widgets["var_hook"].set(node["hook"])
+    widgets["var_tags"].set(" ".join(node["tags"]))
     widgets["var_url"].set(node["url"])
     widgets["var_fill"].set(node["fill"])
     widgets["var_w"].set(node["w"])
@@ -51,6 +55,8 @@ def apply_inspector():
         return
     fields = {
         "title": widgets["var_title"].get(),
+        "hook": widgets["var_hook"].get(),
+        "tags": tags_from_entry(widgets["var_tags"].get()),
         "url": widgets["var_url"].get(),
         "fill": widgets["var_fill"].get(),
         "w": float(widgets["var_w"].get()),
@@ -62,6 +68,9 @@ def apply_inspector():
     pump_events()
     refresh_projection()
     status_set("Applied changes to " + nid)
+
+def tags_from_entry(text):
+    return str(text).split()
 
 def pick_color():
     nid = selection_primary()

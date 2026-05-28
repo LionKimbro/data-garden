@@ -1,0 +1,34 @@
+{
+  "document": {
+    "document-id": "datagarden.node-hook-tags-inspector-fields.v1",
+    "title": "Node Hook/Tags Inspector Fields",
+    "filename": "0010__node-hook-tags-inspector-fields.json",
+    "status": "implemented-note",
+    "purpose": "Record hook and tags support in the node data model and inspector."
+  },
+  "summary": "Nodes now include a hook string and a tags list. The inspector exposes Hook and Tags fields after Title. Tags are edited through a tkinter Entry as whitespace-separated words and stored as a list of strings.",
+  "node-shape": {
+    "hook": "string, default empty",
+    "tags": "list of strings, default empty list",
+    "normalization": "Older project files that lack hook or tags load with hook as an empty string and tags as an empty list."
+  },
+  "inspector-order": [
+    "Selected ID",
+    "Kind",
+    "Title",
+    "Hook",
+    "Tags",
+    "URL",
+    "Fill",
+    "Width / Height / Angle",
+    "Note"
+  ],
+  "layout": {
+    "geometry-row": "Width, Height, and Angle are now compact entries in the same inspector row.",
+    "buttons": "Existing compact action button row remains unchanged."
+  },
+  "save-load": {
+    "save": "copy_node() includes hook and tags through NODE_KEYS.",
+    "load": "normalize_node() supplies defaults and accepts legacy string tags by splitting on whitespace."
+  }
+}

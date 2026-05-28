@@ -59,6 +59,8 @@ def build_inspector():
     widgets["var_id"] = tk.StringVar()
     widgets["var_kind"] = tk.StringVar()
     widgets["var_title"] = tk.StringVar()
+    widgets["var_hook"] = tk.StringVar()
+    widgets["var_tags"] = tk.StringVar()
     widgets["var_url"] = tk.StringVar()
     widgets["var_fill"] = tk.StringVar(value="#6d4c41")
     widgets["var_w"] = tk.DoubleVar(value=140)
@@ -83,11 +85,11 @@ def build_inspector():
     lab("Selected ID"); ent(widgets["var_id"])
     lab("Kind"); ent(widgets["var_kind"])
     lab("Title"); ent(widgets["var_title"])
+    lab("Hook"); ent(widgets["var_hook"])
+    lab("Tags"); ent(widgets["var_tags"])
     lab("URL"); ent(widgets["var_url"])
     lab("Fill"); ent(widgets["var_fill"])
-    lab("Width"); ent(widgets["var_w"])
-    lab("Height"); ent(widgets["var_h"])
-    lab("Angle (deg)"); ent(widgets["var_angle"])
+    build_geometry_row(row)
 
     i = row["i"]
     row["i"] += 1
@@ -100,6 +102,28 @@ def build_inspector():
 
     build_inspector_button_row(row)
     bind_inspector_apply_shortcuts()
+
+def build_geometry_row(row):
+    right = widgets["right"]
+    i = row["i"]
+    row["i"] += 1
+    ttk.Label(right, text="").grid(row=i, column=0, sticky="w", padx=8, pady=4)
+    frame = ttk.Frame(right)
+    frame.grid(row=i, column=1, sticky="ew", padx=8)
+    widgets["inspector_geometry_row"] = frame
+
+    specs = [
+        ("Width:", "var_w"),
+        ("Height:", "var_h"),
+        ("Angle:", "var_angle"),
+    ]
+    for col, spec in enumerate(specs):
+        label, var_key = spec
+        frame.columnconfigure(col * 2 + 1, weight=1)
+        ttk.Label(frame, text=label).grid(row=0, column=col * 2, sticky="w", padx=(0 if col == 0 else 6, 3))
+        entry = ttk.Entry(frame, textvariable=widgets[var_key], width=9)
+        entry.grid(row=0, column=col * 2 + 1, sticky="ew")
+        widgets["inspector_apply_widgets"].append(entry)
 
 def build_inspector_button_row(row):
     right = widgets["right"]

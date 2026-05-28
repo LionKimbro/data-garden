@@ -28,7 +28,7 @@ ZOOM_VISIBILITY_MAX = 20.0
 MIN_NODE_W = 10
 MIN_NODE_H = 10
 
-NODE_KEYS = ("id", "kind", "x", "y", "w", "h", "angle", "fill", "title", "url", "note", "zoom_min", "zoom_max")
+NODE_KEYS = ("id", "kind", "x", "y", "w", "h", "angle", "fill", "title", "hook", "tags", "url", "note", "zoom_min", "zoom_max")
 
 CHORD_BITS = {"a": 16, "s": 8, "d": 4, "f": 2, " ": 1}
 

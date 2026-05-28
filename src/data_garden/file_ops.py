@@ -115,11 +115,20 @@ def normalize_node(raw_node):
         "angle": float(raw_node.get("angle", 0.0)),
         "fill": fill,
         "title": raw_node.get("title", ""),
+        "hook": raw_node.get("hook", ""),
+        "tags": normalize_tags(raw_node.get("tags", [])),
         "url": raw_node.get("url", ""),
         "note": raw_node.get("note", ""),
         "zoom_min": float(raw_node.get("zoom_min", 0.0)),
         "zoom_max": float(raw_node.get("zoom_max", 999999.0)),
     }
+
+def normalize_tags(value):
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    if isinstance(value, str):
+        return value.split()
+    return []
 
 def repair_next_id():
     for node in world["nodes"]:
