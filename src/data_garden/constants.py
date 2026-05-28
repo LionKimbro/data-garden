@@ -25,6 +25,8 @@ TEXT_DEFAULT_H = 40
 TEXT_ZOOM_SPAN_FACTOR = 2.0
 ZOOM_VISIBILITY_MIN = 0.05
 ZOOM_VISIBILITY_MAX = 20.0
+MIN_NODE_W = 10
+MIN_NODE_H = 10
 
 NODE_KEYS = ("id", "kind", "x", "y", "w", "h", "angle", "fill", "title", "url", "note", "zoom_min", "zoom_max")
 

@@ -48,6 +48,9 @@ def manipulation_toggle():
         manipulation_hide()
         return
     if workspace["manipulation"]["kind"] == "size":
+        if not selection_allows_rotation():
+            manipulation_show("size")
+            return
         manipulation_show("rotate")
     else:
         manipulation_show("size")

@@ -67,6 +67,8 @@ def handle_specs_for_selection():
         return []
     points = frame_points_screen(bounds)
     if workspace["manipulation"]["kind"] == "rotate":
+        if not selection_allows_rotation():
+            return []
         x, y = points["n"]
         return [{
             "kind": "handle",

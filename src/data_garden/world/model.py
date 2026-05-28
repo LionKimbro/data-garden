@@ -70,14 +70,30 @@ def node_allows_manipulation(node):
     return node and node["kind"] in ("rect", "circle")
 
 def selection_allows_manipulation():
+    return selection_allows_stretch()
+
+def selection_allows_stretch():
     ids = selection_ids()
     if not ids:
         return False
     for nid in ids:
         node = find_node(nid)
-        if not node_allows_manipulation(node):
+        if node_allows_manipulation(node):
+            return True
+    return False
+
+def selection_allows_rotation():
+    ids = selection_ids()
+    if not ids:
+        return False
+    found_rotatable = False
+    for nid in ids:
+        node = find_node(nid)
+        if node_allows_manipulation(node):
+            found_rotatable = True
+        elif node and node["kind"] != "text":
             return False
-    return True
+    return found_rotatable
 
 def clone_node(nid):
     source = find_node(nid)
@@ -389,17 +405,165 @@ def rotate_point(point, pivot, degrees):
     dy = point[1] - pivot[1]
     return (pivot[0] + dx * cs - dy * sn, pivot[1] + dx * sn + dy * cs)
 
+def node_local_to_world(point, node):
+    return rotate_point((node["x"] + point[0], node["y"] + point[1]), (node["x"], node["y"]), node["angle"])
+
+def world_to_node_local(point, node):
+    unrotated = rotate_point(point, (node["x"], node["y"]), -node["angle"])
+    return (unrotated[0] - node["x"], unrotated[1] - node["y"])
+
+def opposite_handle(handle):
+    opposites = {
+        "nw": "se",
+        "ne": "sw",
+        "sw": "ne",
+        "se": "nw",
+    }
+    return opposites.get(handle)
+
+def rect_local_corner(handle, w, h):
+    dx = w / 2
+    dy = h / 2
+    if handle == "nw":
+        return (-dx, -dy)
+    if handle == "ne":
+        return (dx, -dy)
+    if handle == "sw":
+        return (-dx, dy)
+    if handle == "se":
+        return (dx, dy)
+    return (0, 0)
+
+def anchored_resize_rect(original, handle, pointer_world):
+    anchor_handle = opposite_handle(handle)
+    if not anchor_handle:
+        return None
+    local_anchor = rect_local_corner(anchor_handle, original["w"], original["h"])
+    local_pointer = world_to_node_local(pointer_world, original)
+    dx = local_pointer[0] - local_anchor[0]
+    dy = local_pointer[1] - local_anchor[1]
+    sign_x = 1 if dx >= 0 else -1
+    sign_y = 1 if dy >= 0 else -1
+    if dx == 0:
+        sign_x = 1
+    if dy == 0:
+        sign_y = 1
+    new_w = max(MIN_NODE_W, abs(dx))
+    new_h = max(MIN_NODE_H, abs(dy))
+    local_drag = (
+        local_anchor[0] + sign_x * new_w,
+        local_anchor[1] + sign_y * new_h,
+    )
+    local_center = (
+        (local_anchor[0] + local_drag[0]) / 2,
+        (local_anchor[1] + local_drag[1]) / 2,
+    )
+    world_center = node_local_to_world(local_center, original)
+    return {
+        "x": world_center[0],
+        "y": world_center[1],
+        "w": new_w,
+        "h": new_h,
+        "angle": original["angle"],
+    }
+
+def bounds_for_originals(originals, ids):
+    bounds = []
+    for nid in ids:
+        original = originals.get(nid)
+        if original:
+            node_bounds = node_bounds_world(original)
+            if node_bounds:
+                bounds.append(node_bounds)
+    if not bounds:
+        return None
+    return (
+        min(item[0] for item in bounds),
+        min(item[1] for item in bounds),
+        max(item[2] for item in bounds),
+        max(item[3] for item in bounds),
+    )
+
+def bounds_corner(bounds, handle):
+    x0, y0, x1, y1 = bounds
+    if handle == "nw":
+        return (x0, y0)
+    if handle == "ne":
+        return (x1, y0)
+    if handle == "sw":
+        return (x0, y1)
+    if handle == "se":
+        return (x1, y1)
+    return center_of_bounds(bounds)
+
+def signed_clamped_delta(value, original_value, minimum):
+    sign = 1 if value >= 0 else -1
+    if value == 0:
+        sign = 1 if original_value >= 0 else -1
+    return sign * max(minimum, abs(value))
+
+def minimum_stretch_scale(originals, ids, field, minimum):
+    scale = 0.0
+    for nid in ids:
+        original = originals.get(nid)
+        if original and original[field]:
+            scale = max(scale, minimum / abs(original[field]))
+    return scale
+
+def transform_nodes_for_stretch(originals, ids, handle_name, pointer_world):
+    bounds = bounds_for_originals(originals, ids)
+    anchor_handle = opposite_handle(handle_name)
+    if not bounds or not anchor_handle:
+        return {}
+    anchor = bounds_corner(bounds, anchor_handle)
+    original_drag = bounds_corner(bounds, handle_name)
+    original_dx = original_drag[0] - anchor[0]
+    original_dy = original_drag[1] - anchor[1]
+    if original_dx == 0 or original_dy == 0:
+        return {}
+    min_scale_x = minimum_stretch_scale(originals, ids, "w", MIN_NODE_W)
+    min_scale_y = minimum_stretch_scale(originals, ids, "h", MIN_NODE_H)
+    min_dx = max(MIN_NODE_W, abs(original_dx) * min_scale_x)
+    min_dy = max(MIN_NODE_H, abs(original_dy) * min_scale_y)
+    new_dx = signed_clamped_delta(pointer_world[0] - anchor[0], original_dx, min_dx)
+    new_dy = signed_clamped_delta(pointer_world[1] - anchor[1], original_dy, min_dy)
+    scale_x = new_dx / original_dx
+    scale_y = new_dy / original_dy
+    updates = {}
+    for nid in ids:
+        original = originals.get(nid)
+        if original and original.get("kind") in ("rect", "circle"):
+            updates[nid] = {
+                "x": anchor[0] + (original["x"] - anchor[0]) * scale_x,
+                "y": anchor[1] + (original["y"] - anchor[1]) * scale_y,
+                "w": abs(original["w"] * scale_x),
+                "h": abs(original["h"] * scale_y),
+                "angle": original["angle"],
+            }
+        if original and original.get("kind") == "text":
+            updates[nid] = {
+                "x": anchor[0] + (original["x"] - anchor[0]) * scale_x,
+                "y": anchor[1] + (original["y"] - anchor[1]) * scale_y,
+            }
+    return updates
+
 def transform_nodes_for_rotation(originals, ids, pivot, delta):
     updates = {}
     for nid in ids:
         original = originals.get(nid)
         if original:
             x, y = rotate_point((original["x"], original["y"]), pivot, delta)
-            updates[nid] = {
-                "x": x,
-                "y": y,
-                "angle": original["angle"] + delta,
-            }
+            if original.get("kind") == "text":
+                updates[nid] = {
+                    "x": x,
+                    "y": y,
+                }
+            else:
+                updates[nid] = {
+                    "x": x,
+                    "y": y,
+                    "angle": original["angle"] + delta,
+                }
     return updates
 
 def transform_nodes_for_scale(originals, ids, pivot, scale):
@@ -414,6 +578,19 @@ def transform_nodes_for_scale(originals, ids, pivot, scale):
                 "h": original["h"] * scale,
             }
     return updates
+
+def transform_nodes_for_size(originals, ids, pivot, scale, handle_name, pointer_world):
+    if len(ids) == 1:
+        nid = ids[0]
+        original = originals.get(nid)
+        if original and original.get("kind") == "rect":
+            update = anchored_resize_rect(original, handle_name, pointer_world)
+            if update:
+                return {nid: update}
+    stretch = transform_nodes_for_stretch(originals, ids, handle_name, pointer_world)
+    if stretch:
+        return stretch
+    return transform_nodes_for_scale(originals, ids, pivot, scale)
 
 def node_display_title(node):
     title = node["title"].strip()

@@ -53,9 +53,9 @@
   },
   "manipulation-policy": {
     "selection": "Text nodes can be selected and moved by normal body dragging.",
-    "handles": "Text selections do not show size or rotate handles.",
+    "handles": "Single text selections do not show size or rotate handles.",
     "cycle": "Clicking an already-selected text node does not enter the size/rotate manipulation cycle.",
-    "mixed-selection": "Selections containing any text node suppress transform handles for the whole selection."
+    "mixed-selection": "Mixed selections containing text and at least one rectangle/circle can show stretch and rotate handles. Stretch repositions text nodes with the group but does not resize their text box. Rotate repositions text nodes around the group pivot but does not change their angle."
   },
   "save-load": {
     "save": "Text nodes are saved as normal nodes, with zoom_min and zoom_max included.",
@@ -70,7 +70,7 @@
     "No text wrapping or rich text.",
     "No inspector fields for zoom_min or zoom_max yet.",
     "Font size does not yet scale to fit the logical text box.",
-    "Text nodes are move-only for direct manipulation; size and rotate handles are intentionally suppressed.",
+    "Text nodes are move-only when selected alone. In mixed stretch selections, text nodes reposition with the group while preserving width and height.",
     "Text visibility uses a simple numeric min/max scale range, not discrete zoom bands."
   ],
   "suggested-next-work": [

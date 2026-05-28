@@ -655,7 +655,7 @@ def start_rotate_selection_organism():
     if not ids:
         judge_release("rotate_selection")
         return
-    if not selection_allows_manipulation():
+    if not selection_allows_rotation():
         judge_release("rotate_selection")
         return
     pivot = pivot_for_selection(ids)
@@ -671,7 +671,7 @@ def start_rotate_selection_organism():
     for nid in ids:
         node = find_node(nid)
         if node:
-            rotate["originals"][nid] = copy_fields(node, ("x", "y", "angle"))
+            rotate["originals"][nid] = copy_fields(node, ("kind", "x", "y", "angle"))
     rotate["changed"] = False
     status_set("Rotate object(s)")
 
@@ -721,7 +721,7 @@ def start_size_selection_organism():
     if not ids:
         judge_release("size_selection")
         return
-    if not selection_allows_manipulation():
+    if not selection_allows_stretch():
         judge_release("size_selection")
         return
     pivot = pivot_for_selection(ids)
@@ -742,7 +742,7 @@ def start_size_selection_organism():
     for nid in ids:
         node = find_node(nid)
         if node:
-            size["originals"][nid] = copy_fields(node, ("x", "y", "w", "h", "angle"))
+            size["originals"][nid] = copy_fields(node, ("kind", "x", "y", "w", "h", "angle"))
     size["changed"] = False
     status_set("Size object(s)")
 
@@ -770,7 +770,8 @@ def current_size_selection_updates():
         return {}
     current_dist = distance(pivot, (derived["pointer"]["wx"], derived["pointer"]["wy"]))
     scale = max(0.05, current_dist / size["start_dist"])
-    return transform_nodes_for_scale(size["originals"], size["ids"], pivot, scale)
+    pointer_world = (derived["pointer"]["wx"], derived["pointer"]["wy"])
+    return transform_nodes_for_size(size["originals"], size["ids"], pivot, scale, size["handle_name"], pointer_world)
 
 def pivot_for_selection(ids):
     if len(ids) == 1:

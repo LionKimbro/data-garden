@@ -1,0 +1,61 @@
+{
+  "document": {
+    "document-id": "datagarden.opposite-corner-anchored-resize.v1",
+    "title": "Opposite-Corner Anchored Resize",
+    "filename": "0008__opposite-corner-anchored-resize.json",
+    "status": "implemented-note",
+    "purpose": "Record conventional opposite-corner stretch behavior."
+  },
+  "summary": "Size handles now mean stretch, not uniform scale. A corner handle keeps the opposite selection corner fixed in world space while the dragged corner follows the pointer. Dragging nw anchors se, dragging ne anchors sw, dragging sw anchors ne, and dragging se anchors nw. Preview still uses NODE_PREVIEW_MAP immediates and commit still emits the existing SIZE_SELECTION semantic event.",
+  "node-kinds": {
+    "anchored-stretch": [
+      "rect",
+      "circle"
+    ],
+    "circle-policy": "Circle nodes are modeled as ovals: the kind remains circle because C means Circle and O means Object, but width and height may diverge during stretch.",
+    "multiple-selection": "Multiple selected rectangle/circle nodes stretch together by shared x/y factors from the fixed opposite group-corner anchor. Text nodes in the same selection reposition by those factors but keep their width and height.",
+    "scale-code-path": "Uniform center scale helpers are kept for a later interaction path, but direct size handles use stretch.",
+    "text": "Single text selections remain move-only and do not expose size handles. Mixed selections with at least one rectangle/circle may expose stretch handles, and text nodes reposition without resizing."
+  },
+  "geometry": {
+    "module": "data_garden.world.model",
+    "helpers": [
+      "opposite_handle(handle)",
+      "rect_local_corner(handle, w, h)",
+      "world_to_node_local(point, node)",
+      "node_local_to_world(point, node)",
+      "anchored_resize_rect(original, handle, pointer_world)",
+      "transform_nodes_for_stretch(originals, ids, handle_name, pointer_world)",
+      "transform_nodes_for_size(originals, ids, pivot, scale, handle_name, pointer_world)"
+    ],
+    "single-rotated-rectangles": "Supported. Pointer movement is converted into the original rectangle's local coordinate system, the new local box is formed from the fixed opposite corner and current pointer, and the new local center is rotated back into world space. Angle is preserved.",
+    "group-stretch": "Group stretch uses the axis-aligned selected bounds as its anchor box, then applies shared signed x/y factors. Rectangle/circle nodes update center and size. Text nodes update center only. Angles are preserved.",
+    "handle-crossing": "The pointer may cross the anchored corner. Width and height use absolute local distance, and the semantic handle name does not change during the drag."
+  },
+  "minimum-size": {
+    "MIN_NODE_W": 10,
+    "MIN_NODE_H": 10,
+    "policy": "When the pointer gets closer than the minimum size in either axis, the dragged point is clamped away from the anchor so the anchored corner remains fixed. Group stretch chooses minimum x/y scale factors that keep every stretched node at or above the minimum dimensions."
+  },
+  "preview-and-commit": {
+    "preview": "During drag, the size organism emits NODE_PREVIEW_MAP updates for x, y, w, h, and angle.",
+    "commit": "On release, the existing SIZE_SELECTION event commits the final update map through WORLD_UPDATE_NODE_MAP.",
+    "history": "The world model/effect path records one revision for the completed resize. Preview frames create no world revisions."
+  },
+  "undo-redo": {
+    "undo-fields": [
+      "x",
+      "y",
+      "w",
+      "h",
+      "angle"
+    ],
+    "behavior": "Undo restores the prior rectangle geometry in one step, and redo reapplies the resize in one step."
+  },
+  "future-work": [
+    "text-box resize if text nodes later regain size handles",
+    "separate uniform scale interaction path",
+    "optional no-flip clamp policy",
+    "more visual resize cursors"
+  ]
+}
