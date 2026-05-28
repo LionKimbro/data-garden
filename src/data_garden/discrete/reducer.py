@@ -87,6 +87,17 @@ def reduce_event(event):
         })
         return
 
+    if kind == "PASTE_JSON_AT":
+        callouts_clear()
+        workspace["mode"] = None
+        effects.append({
+            "type": "WORLD_PASTE_JSON",
+            "x": event["x"],
+            "y": event["y"],
+            "json_text": event["json_text"],
+        })
+        return
+
     if kind == "DELETE_NODE":
         callouts_clear()
         ids = event.get("ids")
@@ -165,6 +176,11 @@ def reduce_event(event):
         effects.append({"type": "SAVE_FILE"})
         return
 
+    if kind == "EXIT_PROGRAM":
+        callouts_clear()
+        effects.append({"type": "EXIT_PROGRAM"})
+        return
+
     if kind == "NEW_PROJECT":
         callouts_clear()
         selection_clear()
@@ -238,6 +254,12 @@ def reduce_command(code):
     if code == "SF":
         effects.append({"type": "SAVE_FILE"})
         return
+    if code == "QP":
+        effects.append({"type": "EXIT_PROGRAM"})
+        return
+    if code == "PJ":
+        workspace["mode"] = "paste_json"
+        return
 
     reduce_object_command(code, selection_primary())
 
@@ -274,6 +296,14 @@ def reduce_object_command(code, nid):
         else:
             workspace["awaiting_click_for"] = "XO"
             effects.append({"type": "STATUS", "text": "XO: click a node to clone it, or click empty space to cancel"})
+        return
+
+    if code == "XJ":
+        if nid:
+            effects.append({"type": "COPY_SELECTION_JSON", "ids": selection_ids()})
+        else:
+            workspace["awaiting_click_for"] = "XJ"
+            effects.append({"type": "STATUS", "text": "XJ: click a node to copy its JSON, or click empty space to cancel"})
         return
 
     if code == "OL":
@@ -350,6 +380,14 @@ def route_effect(effect):
             clone_ids = [node["id"] for node in clones]
             emit_event({"type": "SET_SELECTION", "ids": clone_ids, "primary": clone_ids[0]})
             effects.append({"type": "STATUS", "text": "Object cloned"})
+        return
+
+    if kind == "COPY_SELECTION_JSON":
+        copy_selection_json(effect["ids"])
+        return
+
+    if kind == "WORLD_PASTE_JSON":
+        paste_json_nodes(effect["json_text"], effect["x"], effect["y"])
         return
 
     if kind == "WORLD_UPDATE_NODES":
@@ -446,6 +484,10 @@ def route_effect(effect):
         file_save()
         return
 
+    if kind == "EXIT_PROGRAM":
+        request_shutdown()
+        return
+
     if kind == "SHOW_SELECTION_CALLOUTS":
         callouts_show(existing_ids(effect["ids"]), effect.get("source", "marquee"))
         return
@@ -477,6 +519,100 @@ def ask_delete(ids):
         refresh_projection()
     else:
         status_set("Object deletion cancelled")
+
+def copy_selection_json(ids):
+    ids = existing_ids(ids)
+    if not ids:
+        status_set("No objects selected")
+        return
+    nodes = []
+    for nid in ids:
+        node = find_node(nid)
+        if node:
+            nodes.append(copy_node(node))
+    if not nodes:
+        status_set("No objects selected")
+        return
+    write_clipboard_text(json.dumps({"nodes": nodes}, indent=2))
+    status_set("Copied JSON for " + str(len(nodes)) + " object(s)")
+
+def write_clipboard_text(text):
+    root = widgets.get("root")
+    if not root:
+        return
+    root.clipboard_clear()
+    root.clipboard_append(text)
+
+def paste_json_nodes(json_text, x, y):
+    nodes = nodes_from_json_text(json_text)
+    if not nodes:
+        status_set("Clipboard does not contain node JSON")
+        return
+    moved = reposition_pasted_nodes(nodes, x, y)
+    if not moved:
+        status_set("Clipboard does not contain node JSON")
+        return
+    remember_current("Paste JSON")
+    for node in moved:
+        node["id"] = gen_id()
+        world["nodes"].append(node)
+    undo_delta = []
+    redo_delta = []
+    for node in moved:
+        undo_delta.append({"op": "delete_node", "id": node["id"]})
+        redo_delta.append({"op": "create_node", "node": copy_node(node)})
+    record_world_revision("Paste JSON", undo_delta, redo_delta)
+    ids = [node["id"] for node in moved]
+    emit_event({"type": "SET_SELECTION", "ids": ids, "primary": ids[0]})
+    effects.append({"type": "STATUS", "text": "Pasted JSON object(s)"})
+
+def nodes_from_json_text(json_text):
+    try:
+        data = json.loads(json_text)
+    except Exception:
+        return []
+    raw_nodes = []
+    if isinstance(data, dict) and isinstance(data.get("nodes"), list):
+        raw_nodes = data["nodes"]
+    elif isinstance(data, list):
+        raw_nodes = data
+    elif isinstance(data, dict) and "kind" in data:
+        raw_nodes = [data]
+    nodes = []
+    for raw_node in raw_nodes:
+        if isinstance(raw_node, dict):
+            prepared = dict(raw_node)
+            if not prepared.get("id"):
+                prepared["id"] = "paste-source"
+            nodes.append(normalize_node(prepared))
+    return nodes
+
+def reposition_pasted_nodes(nodes, x, y):
+    if not nodes:
+        return []
+    bounds = bounds_for_originals(nodes_by_temp_id(nodes), [node["id"] for node in nodes])
+    if not bounds:
+        return []
+    cx, cy = center_of_bounds(bounds)
+    dx = x - cx
+    dy = y - cy
+    moved = []
+    for node in nodes:
+        pasted = copy_node(node)
+        pasted["x"] = pasted["x"] + dx
+        pasted["y"] = pasted["y"] + dy
+        moved.append(pasted)
+    return moved
+
+def nodes_by_temp_id(nodes):
+    by_id = {}
+    for i, node in enumerate(nodes):
+        nid = node["id"]
+        if nid in by_id:
+            nid = node["id"] + "-" + str(i)
+            node["id"] = nid
+        by_id[nid] = node
+    return by_id
 
 def open_node_link(nid):
     node = find_node(nid)

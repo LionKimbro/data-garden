@@ -8,6 +8,8 @@ g = {
     "restoring_history": False,
     "base_status": "Ready",
     "hover_status": "",
+    "shutdown_requested": False,
+    "shutdown_scheduled": False,
 }
 
 widgets = {}

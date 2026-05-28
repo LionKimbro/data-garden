@@ -1,0 +1,34 @@
+{
+  "document": {
+    "document-id": "datagarden.json-clipboard-clone-paste.v1",
+    "title": "JSON Clipboard Clone/Paste",
+    "filename": "0009__json-clipboard-clone-paste.json",
+    "status": "implemented-note",
+    "purpose": "Record XJ/PJ clipboard JSON behavior."
+  },
+  "summary": "XJ copies the selected node object data to the system clipboard as JSON. PJ enters a paste-from-JSON mode; on canvas click, it reads node JSON from the clipboard, assigns fresh ids, moves the pasted object or group so its bounds center lands at the clicked world position, and records one undoable world revision.",
+  "commands": {
+    "XJ": "Clone to JSON",
+    "PJ": "Paste from JSON"
+  },
+  "clipboard-format": {
+    "export": "XJ writes {\"nodes\": [...]} with canonical node dictionaries from copy_node(node).",
+    "import": "PJ accepts {\"nodes\": [...]}, a raw list of node dictionaries, or a single node dictionary with a kind field.",
+    "canvas-ids": "Canvas item ids are not exported or imported."
+  },
+  "paste-policy": {
+    "ids": "Every pasted node receives a new id from gen_id().",
+    "position": "The pasted selection's axis-aligned world bounds center is moved to the clicked world position. Relative positions between multiple pasted nodes are preserved.",
+    "data": "Other normalized node fields are preserved, including kind, size, angle, fill, title, url, note, zoom_min, and zoom_max."
+  },
+  "architecture": {
+    "xj": "Reducer routes XJ to COPY_SELECTION_JSON, which writes clipboard presentation data without changing the world.",
+    "pj": "The create-object organism handles paste_json mode by emitting PASTE_JSON_AT with click coordinates and clipboard text. Reducer/effect code performs parsing and world mutation.",
+    "history": "PJ records one Paste JSON world revision with delete_node undo notes and create_node redo notes. XJ creates no revision."
+  },
+  "known-limitations": [
+    "No schema version marker is added to the clipboard packet yet.",
+    "Invalid clipboard JSON reports a status message and creates nothing.",
+    "Pasted text nodes keep their original zoom_min/zoom_max values."
+  ]
+}

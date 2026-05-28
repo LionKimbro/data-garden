@@ -157,8 +157,11 @@
       "CO": "Color Object",
       "DO": "Delete Object",
       "XO": "Clone Object",
+      "XJ": "Clone to JSON",
+      "PJ": "Paste from JSON",
       "OL": "Open Link",
       "SF": "Save File",
+      "QP": "Quit Program",
       "AA": "Abandon Active",
       "UU": "Undo",
       "RR": "Redo"

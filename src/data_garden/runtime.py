@@ -22,6 +22,23 @@ def pump_events():
             effect = effects.pop(0)
             route_effect(effect)
 
+def request_shutdown():
+    g["shutdown_requested"] = True
+
+def complete_shutdown_if_requested():
+    if not g["shutdown_requested"]:
+        return
+    if g["shutdown_scheduled"]:
+        return
+    root = widgets.get("root")
+    if not root:
+        return
+    g["shutdown_scheduled"] = True
+    try:
+        root.after_idle(root.destroy)
+    except Exception:
+        root.destroy()
+
 # -----------------------
 # MAIN
 # -----------------------

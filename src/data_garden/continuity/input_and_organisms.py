@@ -176,6 +176,7 @@ def run_app_cycle():
     refresh_projection()
     clear_immediates()
     finish_raw_cycle()
+    complete_shutdown_if_requested()
 
 def run_continuity_cycle():
     derived.clear()
@@ -230,7 +231,7 @@ def judge_resource_matches_context(resource):
     if resource == "mode:neutral":
         return workspace["mode"] is None and workspace["awaiting_click_for"] is None
     if resource == "mode:create_object":
-        return workspace["mode"] in ("create_rect", "create_circle", "create_text", "paste_rect", "paste_circle", "paste_text") and workspace["awaiting_click_for"] is None
+        return workspace["mode"] in ("create_rect", "create_circle", "create_text", "paste_rect", "paste_circle", "paste_text", "paste_json") and workspace["awaiting_click_for"] is None
     if resource == "mode:awaiting_target":
         return bool(workspace["awaiting_click_for"])
     if resource == "selection:primary":
@@ -489,6 +490,7 @@ def finalize_chord_organism():
         pump_events()
         refresh_projection()
         clear_immediates()
+        complete_shutdown_if_requested()
 
 def capture_chord_letter(letter):
     status_set("Chord -> " + letter)
@@ -515,6 +517,15 @@ def run_create_object_organism():
     if not derived["buttons"]["b1_pressed"]:
         return
     if not judge_commit("create_object", ["mode:create_object", "pointer:left"]):
+        return
+    if workspace["mode"] == "paste_json":
+        emit_event({
+            "type": "PASTE_JSON_AT",
+            "x": derived["pointer"]["wx"],
+            "y": derived["pointer"]["wy"],
+            "json_text": clipboard_text(),
+        })
+        judge_release("create_object")
         return
     kind = "rect"
     if workspace["mode"] == "create_circle":
