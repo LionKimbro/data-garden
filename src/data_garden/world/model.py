@@ -18,10 +18,19 @@ def create_node(kind, x, y):
     fill = "#6d4c41"
     w = 140
     h = 100
+    title = ""
+    zoom_min = 0.0
+    zoom_max = 999999.0
     if kind == "circle":
         fill = "#3a6ea5"
         w = 120
         h = 120
+    if kind == "text":
+        fill = TEXT_DEFAULT_FILL
+        w = TEXT_DEFAULT_W
+        h = TEXT_DEFAULT_H
+        title = "Text"
+        zoom_min, zoom_max = text_zoom_range_for_current_camera()
 
     node = {
         "id": gen_id(),
@@ -32,12 +41,43 @@ def create_node(kind, x, y):
         "h": h,
         "angle": 0.0,
         "fill": fill,
-        "title": "",
+        "title": title,
         "url": "",
         "note": "",
+        "zoom_min": zoom_min,
+        "zoom_max": zoom_max,
     }
     world["nodes"].append(node)
     return node
+
+def text_zoom_range_for_current_camera():
+    scale = float(workspace["camera"]["scale"])
+    zoom_min = max(ZOOM_VISIBILITY_MIN, scale / TEXT_ZOOM_SPAN_FACTOR)
+    zoom_max = min(ZOOM_VISIBILITY_MAX, scale * TEXT_ZOOM_SPAN_FACTOR)
+    if zoom_max < zoom_min:
+        zoom_max = zoom_min
+    return zoom_min, zoom_max
+
+def node_visible_at_current_zoom(node):
+    if node["kind"] != "text":
+        return True
+    scale = float(workspace["camera"]["scale"])
+    zoom_min = float(node.get("zoom_min", 0.0))
+    zoom_max = float(node.get("zoom_max", 999999.0))
+    return zoom_min <= scale <= zoom_max
+
+def node_allows_manipulation(node):
+    return node and node["kind"] in ("rect", "circle")
+
+def selection_allows_manipulation():
+    ids = selection_ids()
+    if not ids:
+        return False
+    for nid in ids:
+        node = find_node(nid)
+        if not node_allows_manipulation(node):
+            return False
+    return True
 
 def clone_node(nid):
     source = find_node(nid)
@@ -275,7 +315,7 @@ def node_bounds_world(node):
             node["x"] + node["w"] / 2,
             node["y"] + node["h"] / 2,
         )
-    if node["kind"] == "rect":
+    if node["kind"] in ("rect", "text"):
         points = rect_points_world(node)
         xs = [p[0] for p in points]
         ys = [p[1] for p in points]
@@ -306,6 +346,8 @@ def selection_candidates_in_world_rect(x0, y0, x1, y1):
     bounds = rect_bounds_from_points(x0, y0, x1, y1)
     ids = []
     for node in world["nodes"]:
+        if not node_visible_at_current_zoom(node):
+            continue
         node_bounds = node_bounds_world(node)
         if node_bounds and rects_intersect(bounds, node_bounds):
             ids.append(node["id"])
@@ -393,10 +435,26 @@ def hover_status_for_node(node):
         text += " [link]"
     return text
 
+def node_callout_title(node):
+    title = node["title"].strip()
+    if not title and "text" in node:
+        title = str(node["text"]).strip().splitlines()[0]
+    if not title:
+        title = node["id"]
+    title = " ".join(str(title).split())
+    if len(title) > CALLOUT_MAX_TITLE_CHARS:
+        title = title[:CALLOUT_MAX_TITLE_CHARS - 3] + "..."
+    return title
+
 def copy_node(node):
     copied = {}
     for key in NODE_KEYS:
-        copied[key] = node[key]
+        if key == "zoom_min":
+            copied[key] = node.get(key, 0.0)
+        elif key == "zoom_max":
+            copied[key] = node.get(key, 999999.0)
+        else:
+            copied[key] = node[key]
     return copied
 
 def gen_id():

@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import webbrowser
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk, filedialog, colorchooser, messagebox
 
 from data_garden.constants import *
@@ -22,6 +23,7 @@ def refresh_projection():
     draw_selection()
     draw_manipulation_frame()
     draw_marquee()
+    draw_callouts()
 
 def apply_cursor_immediates():
     if "canvas" not in widgets:
@@ -72,6 +74,8 @@ def draw_nodes():
     projection["items"].clear()
 
     for node in world["nodes"]:
+        if not node_visible_at_current_zoom(node):
+            continue
         item = draw_node(projected_node_from_node(node))
         if item:
             projection["items"][item] = node["id"]
@@ -81,6 +85,8 @@ def draw_node(node):
         return draw_rect_node(node)
     if node["kind"] == "circle":
         return draw_circle_node(node)
+    if node["kind"] == "text":
+        return draw_text_node(node)
     return None
 
 def draw_rect_node(node):
@@ -106,6 +112,19 @@ def draw_circle_node(node):
         cy + ry,
         fill=node["fill"],
         outline="",
+        tags=("node", "n:" + node["id"]),
+    )
+
+def draw_text_node(node):
+    canvas = widgets["canvas"]
+    sx, sy = world_to_screen(node["x"], node["y"])
+    return canvas.create_text(
+        sx,
+        sy,
+        text=node["title"] or node["id"],
+        fill=node["fill"],
+        anchor="center",
+        angle=-node["angle"],
         tags=("node", "n:" + node["id"]),
     )
 
@@ -210,12 +229,124 @@ def current_marquee_preview():
             return immediate
     return None
 
+def draw_callouts():
+    canvas = widgets["canvas"]
+    canvas.delete("callout")
+    if not workspace["callouts"]["active"]:
+        return
+    entries = callout_entries()
+    if not entries:
+        return
+    width = canvas.winfo_width() or 1200
+    height = canvas.winfo_height() or 800
+    font = tkfont.nametofont("TkDefaultFont")
+    for entry in entries:
+        entry["title"] = fit_text_to_px(entry["title"], font, CALLOUT_MAX_TEXT_PX)
+        entry["text_w"] = min(font.measure(entry["title"]), CALLOUT_MAX_TEXT_PX)
+    widest = max(entry["text_w"] for entry in entries)
+    bounds = callout_cluster_screen_bounds(entries)
+    cluster_cx = (bounds[0] + bounds[2]) / 2
+    cluster_cy = (bounds[1] + bounds[3]) / 2
+    side = "right" if cluster_cx < width / 2 else "left"
+    text_x = callout_text_x(side, width, widest)
+    positions = callout_text_y_positions(entries, height, cluster_cy)
+    for i, entry in enumerate(entries):
+        text_y = positions[i]
+        if side == "right":
+            line_start_x = text_x - CALLOUT_PAD
+            anchor = "w"
+        else:
+            line_start_x = text_x + CALLOUT_PAD
+            anchor = "e"
+        canvas.create_line(
+            line_start_x,
+            text_y,
+            entry["sx"],
+            entry["sy"],
+            fill=CALLOUT_LINE_FILL,
+            width=1,
+            tags=("overlay", "callout", "callout_line"),
+        )
+        canvas.create_text(
+            text_x,
+            text_y,
+            text=entry["title"],
+            anchor=anchor,
+            fill=CALLOUT_TEXT_FILL,
+            font=font,
+            tags=("overlay", "callout", "callout_text"),
+        )
+
+def callout_entries():
+    entries = []
+    for nid in workspace["callouts"]["ids"]:
+        node = find_node(nid)
+        if node:
+            sx, sy = world_to_screen(node["x"], node["y"])
+            bounds = callout_node_screen_bounds(node)
+            entries.append({
+                "id": nid,
+                "title": node_callout_title(node),
+                "sx": sx,
+                "sy": sy,
+                "bounds": bounds,
+            })
+    entries.sort(key=lambda entry: entry["sy"])
+    return entries
+
+def fit_text_to_px(text, font, max_px):
+    if font.measure(text) <= max_px:
+        return text
+    if max_px <= font.measure("..."):
+        return "..."
+    trimmed = text
+    while trimmed and font.measure(trimmed + "...") > max_px:
+        trimmed = trimmed[:-1]
+    return trimmed.rstrip() + "..."
+
+def callout_cluster_screen_bounds(entries):
+    xs = []
+    ys = []
+    for entry in entries:
+        bounds = entry["bounds"]
+        xs.extend([bounds[0], bounds[2]])
+        ys.extend([bounds[1], bounds[3]])
+    return (min(xs), min(ys), max(xs), max(ys))
+
+def callout_node_screen_bounds(node):
+    bounds = node_bounds_world(node)
+    if not bounds:
+        sx, sy = world_to_screen(node["x"], node["y"])
+        return (sx, sy, sx, sy)
+    sx0, sy0 = world_to_screen(bounds[0], bounds[1])
+    sx1, sy1 = world_to_screen(bounds[2], bounds[3])
+    return (min(sx0, sx1), min(sy0, sy1), max(sx0, sx1), max(sy0, sy1))
+
+def callout_text_x(side, canvas_width, widest):
+    if side == "right":
+        return max(CALLOUT_MARGIN, canvas_width - CALLOUT_MARGIN - widest)
+    return CALLOUT_MARGIN + widest
+
+def callout_text_y_positions(entries, canvas_height, cluster_cy):
+    count = len(entries)
+    row_h = CALLOUT_ROW_H
+    available = max(row_h, canvas_height - CALLOUT_MARGIN * 2)
+    if count * row_h > available:
+        row_h = max(12, available / count)
+    total_h = count * row_h
+    max_start = max(CALLOUT_MARGIN, canvas_height - CALLOUT_MARGIN - total_h)
+    start_y = max(CALLOUT_MARGIN, min(cluster_cy - total_h / 2, max_start))
+    positions = []
+    for i in range(count):
+        positions.append(start_y + i * row_h)
+    return positions
+
 def draw_candidate_selection(nid):
     canvas = widgets["canvas"]
     node = projected_node(nid)
     if not node:
         return
-    if node["kind"] == "rect":
+    if node["kind"] in ("rect", "text"):
         canvas.create_polygon(
             rect_points(node),
             fill="",
@@ -246,7 +377,7 @@ def draw_node_selection(nid):
     node = projected_node(nid)
     if not node:
         return
-    if node["kind"] == "rect":
+    if node["kind"] in ("rect", "text"):
         canvas.create_polygon(
             rect_points(node),
             fill="",

@@ -26,6 +26,7 @@ def reduce_event(event):
         return
 
     if kind == "CANCEL":
+        callouts_clear()
         workspace["mode"] = None
         workspace["awaiting_click_for"] = None
         reset_chord_organism()
@@ -41,6 +42,7 @@ def reduce_event(event):
         return
 
     if kind == "SET_SELECTION":
+        callouts_clear()
         if "ids" in event:
             selection_set(event["ids"], event.get("primary"))
         else:
@@ -53,7 +55,16 @@ def reduce_event(event):
         return
 
     if kind == "TOGGLE_MANIPULATION":
+        callouts_clear()
         manipulation_toggle()
+        return
+
+    if kind == "SHOW_SELECTION_CALLOUTS":
+        effects.append({"type": "SHOW_SELECTION_CALLOUTS", "ids": event["ids"], "source": event.get("source", "marquee")})
+        return
+
+    if kind == "CLEAR_SELECTION_CALLOUTS":
+        effects.append({"type": "CLEAR_SELECTION_CALLOUTS"})
         return
 
     if kind == "UNDO":
@@ -65,6 +76,7 @@ def reduce_event(event):
         return
 
     if kind == "CREATE_NODE":
+        callouts_clear()
         workspace["mode"] = None
         effects.append({
             "type": "WORLD_CREATE_NODE",
@@ -75,6 +87,7 @@ def reduce_event(event):
         return
 
     if kind == "DELETE_NODE":
+        callouts_clear()
         ids = event.get("ids")
         if ids is None:
             ids = [event["id"]]
@@ -82,6 +95,7 @@ def reduce_event(event):
         return
 
     if kind == "CLONE_NODE":
+        callouts_clear()
         ids = event.get("ids")
         if ids is None:
             ids = [event["id"]]
@@ -89,6 +103,7 @@ def reduce_event(event):
         return
 
     if kind == "SET_NODE_FILL":
+        callouts_clear()
         ids = event.get("ids")
         if ids is None:
             ids = [event["id"]]
@@ -96,6 +111,7 @@ def reduce_event(event):
         return
 
     if kind == "UPDATE_NODE":
+        callouts_clear()
         effects.append({"type": "WORLD_UPDATE_NODE", "id": event["id"], "fields": event["fields"]})
         return
 
@@ -121,11 +137,13 @@ def reduce_event(event):
         return
 
     if kind == "ROTATE_SELECTION":
+        callouts_clear()
         effects.append({"type": "WORLD_UPDATE_NODE_MAP", "updates": event["updates"], "label": "Rotate"})
         effects.append({"type": "STATUS", "text": "Rotated selection"})
         return
 
     if kind == "SIZE_SELECTION":
+        callouts_clear()
         effects.append({"type": "WORLD_UPDATE_NODE_MAP", "updates": event["updates"], "label": "Size"})
         effects.append({"type": "STATUS", "text": "Sized selection"})
         return
@@ -137,14 +155,17 @@ def reduce_event(event):
         return
 
     if kind == "OPEN_LINK":
+        callouts_clear()
         effects.append({"type": "OPEN_LINK", "id": event["id"]})
         return
 
     if kind == "SAVE_FILE":
+        callouts_clear()
         effects.append({"type": "SAVE_FILE"})
         return
 
     if kind == "NEW_PROJECT":
+        callouts_clear()
         selection_clear()
         manipulation_hide()
         workspace["mode"] = None
@@ -157,6 +178,7 @@ def reduce_event(event):
         return
 
     if kind == "LOAD_PROJECT":
+        callouts_clear()
         selection_clear()
         manipulation_hide()
         workspace["mode"] = None
@@ -184,7 +206,11 @@ def reduce_command(code):
     if code == "CC":
         workspace["mode"] = "create_circle"
         return
+    if code == "CT":
+        workspace["mode"] = "create_text"
+        return
     if code == "AA":
+        callouts_clear()
         selection_clear()
         manipulation_hide()
         workspace["mode"] = None
@@ -405,6 +431,14 @@ def route_effect(effect):
 
     if kind == "SAVE_FILE":
         file_save()
+        return
+
+    if kind == "SHOW_SELECTION_CALLOUTS":
+        callouts_show(existing_ids(effect["ids"]), effect.get("source", "marquee"))
+        return
+
+    if kind == "CLEAR_SELECTION_CALLOUTS":
+        callouts_clear()
         return
 
 def ask_color(ids):

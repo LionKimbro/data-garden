@@ -1,0 +1,82 @@
+{
+  "document": {
+    "document-id": "datagarden.text-item-nodes-ct-command.v1",
+    "title": "Text Item Nodes / CT Command",
+    "filename": "0007__text-item-nodes-ct-command.json",
+    "status": "implemented-note",
+    "purpose": "Record the first visible text-node implementation for Data Garden."
+  },
+  "summary": "Data Garden now supports text nodes created with the CT chord command. CT enters create_text mode, and the existing create-object organism emits the same CREATE_NODE semantic event used by rectangle and circle creation. The World Model creates a durable node with kind text, centered at the clicked world position.",
+  "command": {
+    "code": "CT",
+    "name": "Create Text",
+    "mode": "create_text",
+    "integration": "CT is in COMMAND_NAMES and reducer command handling, parallel to CR and CC."
+  },
+  "node-shape": {
+    "kind": "text",
+    "display-field": "title",
+    "defaults": {
+      "w": 180,
+      "h": 40,
+      "angle": 0.0,
+      "fill": "#f8fafc",
+      "title": "Text",
+      "url": "",
+      "note": ""
+    },
+    "canonical-keys": "NODE_KEYS now includes zoom_min and zoom_max for all node kinds."
+  },
+  "zoom-visibility": {
+    "creation-policy": "Text nodes get zoom_min and zoom_max centered around workspace.camera.scale.",
+    "span-factor": 2.0,
+    "clamps": {
+      "zoom_min": 0.05,
+      "zoom_max": 20.0
+    },
+    "projection-policy": "Projection does not draw text node body/text outside its zoom range. Selection state may still exist, and selection/manipulation overlays can still describe a selected hidden text node."
+  },
+  "projection": {
+    "module": "data_garden.projection.render",
+    "behavior": [
+      "Text nodes draw as canvas text at the projected node center.",
+      "The displayed string is node.title, falling back to node id if title is empty.",
+      "The fill field controls text color.",
+      "The node angle is passed to canvas text for simple rotation support.",
+      "Font sizing, wrapping, and rich text are intentionally not implemented yet."
+    ]
+  },
+  "bounds-and-hit-testing": {
+    "bounds": "Text nodes use the same rotated rectangle bounds as rect nodes, based on x, y, w, h, and angle.",
+    "hit-testing": "Canvas picking still checks node canvas items first, then falls back to visible node world bounds so text nodes have a logical body hit target.",
+    "marquee": "Marquee selection uses node world bounds and skips text nodes outside their current zoom range."
+  },
+  "manipulation-policy": {
+    "selection": "Text nodes can be selected and moved by normal body dragging.",
+    "handles": "Text selections do not show size or rotate handles.",
+    "cycle": "Clicking an already-selected text node does not enter the size/rotate manipulation cycle.",
+    "mixed-selection": "Selections containing any text node suppress transform handles for the whole selection."
+  },
+  "save-load": {
+    "save": "Text nodes are saved as normal nodes, with zoom_min and zoom_max included.",
+    "load": "normalize_node() preserves text nodes and supplies zoom_min/zoom_max defaults for older files.",
+    "older-nodes": "Rect and circle nodes normalize to broad always-visible zoom bounds."
+  },
+  "undo-redo": {
+    "policy": "Text node create, update, move, size, rotate, delete, save, and load use the existing world revision and history paths.",
+    "full-world-snapshots": "No new full-world snapshot behavior was added."
+  },
+  "known-limitations": [
+    "No text wrapping or rich text.",
+    "No inspector fields for zoom_min or zoom_max yet.",
+    "Font size does not yet scale to fit the logical text box.",
+    "Text nodes are move-only for direct manipulation; size and rotate handles are intentionally suppressed.",
+    "Text visibility uses a simple numeric min/max scale range, not discrete zoom bands."
+  ],
+  "suggested-next-work": [
+    "optional inspector controls for zoom range",
+    "font sizing based on text node height",
+    "multiline layout or wrapping",
+    "text alignment options"
+  ]
+}

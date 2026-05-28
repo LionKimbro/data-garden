@@ -100,6 +100,10 @@ def normalize_node(raw_node):
         w = raw_node.get("w", 120)
         h = raw_node.get("h", 120)
         fill = raw_node.get("fill", "#3a6ea5")
+    if kind == "text":
+        w = raw_node.get("w", TEXT_DEFAULT_W)
+        h = raw_node.get("h", TEXT_DEFAULT_H)
+        fill = raw_node.get("fill", TEXT_DEFAULT_FILL)
 
     return {
         "id": nid,
@@ -113,6 +117,8 @@ def normalize_node(raw_node):
         "title": raw_node.get("title", ""),
         "url": raw_node.get("url", ""),
         "note": raw_node.get("note", ""),
+        "zoom_min": float(raw_node.get("zoom_min", 0.0)),
+        "zoom_max": float(raw_node.get("zoom_max", 999999.0)),
     }
 
 def repair_next_id():

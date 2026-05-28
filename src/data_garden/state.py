@@ -127,6 +127,11 @@ workspace = {
     "hover": {
         "id": None,
     },
+    "callouts": {
+        "active": False,
+        "ids": [],
+        "source": None,
+    },
     "mode": None,
     "awaiting_click_for": None,
     "camera": {

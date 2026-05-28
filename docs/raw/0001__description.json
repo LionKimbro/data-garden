@@ -150,6 +150,7 @@
     "commands": {
       "CR": "Create Rectangle",
       "CC": "Create Circle",
+      "CT": "Create Text",
       "CO": "Color Object",
       "DO": "Delete Object",
       "XO": "Clone Object",

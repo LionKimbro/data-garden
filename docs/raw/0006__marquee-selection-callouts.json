@@ -1,0 +1,95 @@
+{
+  "document": {
+    "document-id": "datagarden.marquee-selection-callouts.v1",
+    "title": "Marquee Selection Callouts",
+    "filename": "0006__marquee-selection-callouts.json",
+    "status": "implemented-note",
+    "purpose": "Record temporary screen-space title callouts shown after marquee selection."
+  },
+  "summary": "After marquee selection commits one or more selected nodes, Data Garden shows a temporary callout overlay listing selected node titles. Each title is rendered as a zoom-independent screen-space canvas text item with a leader line back to the selected node center. Empty marquee selections clear any existing callouts and show none.",
+  "overlay-state": {
+    "location": "workspace.callouts",
+    "shape": {
+      "active": "bool",
+      "ids": "selected node ids",
+      "source": "marquee"
+    },
+    "ownership": "Transient editor/presentation state, not World Model state."
+  },
+  "marquee-integration": {
+    "organism": "data_garden.continuity.input_and_organisms.commit_marquee_selection()",
+    "events": [
+      "SHOW_SELECTION_CALLOUTS",
+      "CLEAR_SELECTION_CALLOUTS"
+    ],
+    "policy": [
+      "Committed non-empty marquee selection shows callouts.",
+      "Committed empty marquee selection clears callouts.",
+      "Callouts are not shown during marquee drag preview."
+    ]
+  },
+  "projection": {
+    "module": "data_garden.projection.render",
+    "functions": [
+      "draw_callouts()",
+      "callout_entries()",
+      "fit_text_to_px(text, font, max_px)",
+      "callout_cluster_screen_bounds(entries)",
+      "callout_text_x(side, canvas_width, widest)",
+      "callout_text_y_positions(entries, canvas_height, cluster_cy)"
+    ],
+    "rendering": [
+      "Callouts are tagged overlay, callout, callout_text, and callout_line.",
+      "Canvas text uses screen-space coordinates and normal Tk font sizing.",
+      "Leader lines connect each label row to the projected node center.",
+      "Callouts are redrawn during projection refresh and deleted with canvas.delete('callout')."
+    ]
+  },
+  "text-measurement": {
+    "font": "TkDefaultFont via tkinter.font.nametofont",
+    "title-helper": "node_callout_title(node)",
+    "character-limit": 60,
+    "pixel-limit": 260,
+    "fit-policy": "Titles are stripped, internal whitespace is collapsed, character-truncated first, then shortened further until the measured text plus ellipsis fits the pixel limit.",
+    "widest-title": "The callout column uses the widest fitted title width, capped at CALLOUT_MAX_TEXT_PX."
+  },
+  "placement": {
+    "side-choice": "If the selected cluster center is left of canvas center, labels are placed on the right; otherwise labels are placed on the left.",
+    "cluster-bounds": "Side choice uses selected node screen-space bounds, with rotated rectangle bounds coming from node_bounds_world(node).",
+    "alignment": "Right-side callouts use anchor='w' with a shared left edge. Left-side callouts use anchor='e' with a shared right edge. In both cases, the edge nearest the leader lines aligns vertically.",
+    "vertical-order": "Entries are sorted by projected node center y coordinate.",
+    "vertical-layout": "Rows use fixed spacing unless there are too many labels, in which case row spacing is compressed to fit inside the canvas margins."
+  },
+  "dismissal": [
+    "new canvas mouse press",
+    "middle mouse press",
+    "wheel zoom",
+    "camera pan start",
+    "selection change",
+    "object manipulation commit",
+    "create/delete/clone/color/apply/open/save operations",
+    "file new/load",
+    "Escape or AA through cancel/selection clearing",
+    "a new marquee selection, which replaces prior callouts"
+  ],
+  "non-effects": [
+    "Callouts are not saved to project JSON.",
+    "Callouts are not undoable.",
+    "Callouts create no history checkpoints.",
+    "Callouts create no world revisions.",
+    "Callout canvas item ids are not stored in world nodes.",
+    "Callout overlay items are not tagged as nodes and do not affect node hit-testing."
+  ],
+  "known-limitations": [
+    "No wrapping; callout titles are one line.",
+    "No cap with explicit 'N more' row yet.",
+    "Pan and zoom dismiss callouts rather than keeping them live-updated as a reading aid.",
+    "Line crossings are acceptable for now."
+  ],
+  "suggested-next-work": [
+    "callout styling refinement",
+    "optional cap with 'N more'",
+    "hover/callout coordination polish",
+    "persistent annotations as separate future world objects"
+  ]
+}

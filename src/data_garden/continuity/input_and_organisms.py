@@ -78,6 +78,7 @@ def on_left_press(e):
     raw_update_pointer(e)
     raw_set_button(1, True)
     raw["current"]["last_event_kind"] = "button_press"
+    callouts_clear()
     run_app_cycle()
 
 def on_left_drag(e):
@@ -96,6 +97,7 @@ def on_middle_press(e):
     raw_update_pointer(e)
     raw_set_button(2, True)
     raw["current"]["last_event_kind"] = "button_press"
+    callouts_clear()
     run_app_cycle()
 
 def on_middle_drag(e):
@@ -115,6 +117,7 @@ def on_wheel(e, delta=None):
         delta = e.delta
     raw["current"]["wheel_delta"] = delta
     raw["current"]["last_event_kind"] = "wheel"
+    callouts_clear()
     run_app_cycle()
 
 def raw_update_pointer(e):
@@ -222,7 +225,7 @@ def judge_resource_matches_context(resource):
     if resource == "mode:neutral":
         return workspace["mode"] is None and workspace["awaiting_click_for"] is None
     if resource == "mode:create_object":
-        return workspace["mode"] in ("create_rect", "create_circle") and workspace["awaiting_click_for"] is None
+        return workspace["mode"] in ("create_rect", "create_circle", "create_text") and workspace["awaiting_click_for"] is None
     if resource == "mode:awaiting_target":
         return bool(workspace["awaiting_click_for"])
     if resource == "selection:primary":
@@ -511,6 +514,8 @@ def run_create_object_organism():
     kind = "rect"
     if workspace["mode"] == "create_circle":
         kind = "circle"
+    if workspace["mode"] == "create_text":
+        kind = "text"
     emit_event({
         "type": "CREATE_NODE",
         "kind": kind,
@@ -650,6 +655,9 @@ def start_rotate_selection_organism():
     if not ids:
         judge_release("rotate_selection")
         return
+    if not selection_allows_manipulation():
+        judge_release("rotate_selection")
+        return
     pivot = pivot_for_selection(ids)
     if not pivot:
         judge_release("rotate_selection")
@@ -711,6 +719,9 @@ def start_size_selection_organism():
         return
     ids = existing_ids(selection_ids())
     if not ids:
+        judge_release("size_selection")
+        return
+    if not selection_allows_manipulation():
         judge_release("size_selection")
         return
     pivot = pivot_for_selection(ids)
@@ -824,6 +835,10 @@ def commit_marquee_selection():
     ids = list(marquee["candidate_ids"])
     primary = ids[0] if ids else None
     emit_event({"type": "SET_SELECTION", "ids": ids, "primary": primary})
+    if ids:
+        emit_event({"type": "SHOW_SELECTION_CALLOUTS", "ids": ids, "source": "marquee"})
+    else:
+        emit_event({"type": "CLEAR_SELECTION_CALLOUTS"})
     reset_marquee_organism()
 
 def update_marquee_rect():
@@ -855,6 +870,7 @@ def run_camera_pan_organism():
             return
         if not judge_commit("camera_pan", ["pointer:middle", "camera"]):
             return
+        callouts_clear()
         begin_camera_episode()
         pan["state"] = "active"
         pan["last"] = (derived["pointer"]["sx"], derived["pointer"]["sy"])
@@ -884,6 +900,7 @@ def run_camera_zoom_organism():
         return
     if not judge_check("camera_zoom", ["camera"]):
         return
+    callouts_clear()
     begin_camera_episode()
     factor = 1.1
     if delta < 0:

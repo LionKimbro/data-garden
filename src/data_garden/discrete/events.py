@@ -38,19 +38,29 @@ def selection_set(ids, primary=None):
 
 def manipulation_show(kind="size"):
     workspace["manipulation"]["kind"] = kind
-    workspace["manipulation"]["visible"] = bool(selection_ids())
+    workspace["manipulation"]["visible"] = selection_allows_manipulation()
 
 def manipulation_hide():
     workspace["manipulation"]["visible"] = False
 
 def manipulation_toggle():
-    if not selection_ids():
+    if not selection_allows_manipulation():
         manipulation_hide()
         return
     if workspace["manipulation"]["kind"] == "size":
         manipulation_show("rotate")
     else:
         manipulation_show("size")
+
+def callouts_show(ids, source="marquee"):
+    workspace["callouts"]["ids"][:] = list(ids)
+    workspace["callouts"]["source"] = source
+    workspace["callouts"]["active"] = bool(ids)
+
+def callouts_clear():
+    workspace["callouts"]["ids"][:] = []
+    workspace["callouts"]["source"] = None
+    workspace["callouts"]["active"] = False
 
 def selection_clear():
     selection_set([], None)

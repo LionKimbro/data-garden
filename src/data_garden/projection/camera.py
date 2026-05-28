@@ -28,6 +28,13 @@ def pick_node(sx, sy):
     for item in reversed(items):
         if "node" in canvas.gettags(item):
             return item_to_node_id(item)
+    wx, wy = screen_to_world(sx, sy)
+    for node in reversed(world["nodes"]):
+        if not node_visible_at_current_zoom(node):
+            continue
+        bounds = node_bounds_world(node)
+        if bounds and bounds[0] <= wx <= bounds[2] and bounds[1] <= wy <= bounds[3]:
+            return node["id"]
     return None
 
 def item_to_node_id(item):
@@ -53,7 +60,7 @@ def frame_points_screen(bounds):
 def handle_specs_for_selection():
     if not workspace["manipulation"]["visible"]:
         return []
-    if not selection_ids():
+    if not selection_allows_manipulation():
         return []
     bounds = selected_bounds_world()
     if not bounds:
