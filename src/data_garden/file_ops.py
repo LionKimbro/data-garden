@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import webbrowser
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk, filedialog, colorchooser, messagebox
 
 from data_garden.constants import *
@@ -56,6 +57,9 @@ def file_save_as():
     file_save()
 
 def read_json(path):
+    path = Path(path)
+    if path.is_dir():
+        raise IsADirectoryError(f"Expected a JSON file, got directory: '{path}'")
     with open(path, "r", encoding="utf-8") as handle:
         return json.load(handle)
 

@@ -18,7 +18,7 @@ def declare_cli():
     )
     app.declare_projectdir('.datagarden')
     app.set_flag('search_upwards_for_project_dir', True)
-    app.declare_key('execpath.firstload', '')
+    app.declare_key('execpath.firstload', None)
     app.describe_key('execpath.firstload', 'Project JSON file to load when the GUI starts')
     app.declare_cmd('', run_default)
     app.describe_cmd('', 'Launch the Data Garden GUI')
